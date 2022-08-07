@@ -11,10 +11,14 @@ pub(crate) fn pair() {
         let addr = format!("{}:{}", host, port);
         let stream = TcpStream::connect(addr).await;
         if stream.is_err() {
-            return;
+            println!("connection failed");
+            //return;
         }
 
-        _ = hapcli::HAPClient::pair(stream.ok().unwrap()).await;
+        let r = hapcli::HAPClient::pair(stream.unwrap()).await;
+        if r.is_err() {
+            println!("pairing failed");
+        }
     });
 
 }
