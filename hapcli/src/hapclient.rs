@@ -18,17 +18,11 @@ impl HAPClient {
     }
 
     pub async fn pair(stream: TcpStream) -> Result<(),()> {
-
-        //let stream = TcpStream::connect("192.168.0.50:51826").await.unwrap();
-
-
-
-        let base_uri_str = format!("http://{}", stream.peer_addr().unwrap());
-
+        let host_str = stream.peer_addr().unwrap().to_string();
 
         let h = hyper::client::conn::handshake(stream).await;
         if h.is_err() {
-        return Err(());
+            return Err(());
         }
 
         let (mut sender, conn) = h.ok().unwrap();
@@ -42,17 +36,18 @@ impl HAPClient {
 
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
         println!("pair-setup uri: {}", url.to_string());
-        //let req = Request::builder().method("POST").uri(url).body(Body::empty()).unwrap();
-        let req = Request::post(url).header("Host","192.168.0.50:51826").body(Body::empty()).unwrap();
+        let req = Request::post(url).header("Host", host_str).body(Body::empty()).unwrap();
 
-        let res = sender.send_request(req).await;
-        if res.is_err() {
-            println!("{:?}", res);
+        let result = sender.send_request(req).await;
+        if result.is_err() {
+            println!("{:?}", result);
             return Err(());
         }
-        let mut res_body = res.ok().unwrap();
+        let mut resp = result.ok().unwrap();
 
-        while let Some(next) = res_body.data().await {
+        println!("Response: {}", resp.status());
+
+        while let Some(next) = resp.data().await {
 
         }
 
