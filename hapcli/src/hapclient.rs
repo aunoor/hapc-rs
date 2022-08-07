@@ -5,6 +5,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use hyper::client::conn;
 
+use crate::req_builder::pairing_req_builder;
 
 pub struct HAPClient {
     stream: TcpStream,
@@ -36,14 +37,14 @@ impl HAPClient {
 
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
         println!("pair-setup uri: {}", url.to_string());
-        let req = Request::post(url).header("Host", host_str).body(Body::empty()).unwrap();
+        let req = pairing_req_builder(url, host_str, "".to_string(), &[1,2,3]);
 
         let result = sender.send_request(req).await;
         if result.is_err() {
             println!("{:?}", result);
             return Err(());
         }
-        let mut resp = result.ok().unwrap();
+        let mut resp = result.unwrap();
 
         println!("Response: {}", resp.status());
 
