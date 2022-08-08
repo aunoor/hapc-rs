@@ -9,3 +9,4 @@ edition = "2021"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 winapi = { version = "0.3.9", features = ["std", "winsock2", "mswsock", "handleapi", "ws2ipdef", "ws2tcpip"] }
 tokio = { version = "^1.17.0", features = ["full"] }
+byteorder = "1.4.3"

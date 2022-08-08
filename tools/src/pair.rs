@@ -12,7 +12,7 @@ pub(crate) fn pair() {
         let stream = TcpStream::connect(addr).await;
         if stream.is_err() {
             println!("connection failed");
-            //return;
+            return;
         }
 
         let r = hapcli::HAPClient::pair(stream.unwrap()).await;
