@@ -119,12 +119,6 @@ pub enum Type {
     Separator = 0xFF,
 }
 
-impl Type {
-    pub fn u8(&self) -> u8 {
-        *self as u8
-    }
-}
-
 /// The variants of `Value` can hold the corresponding values to the types provided by `Type`.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -214,10 +208,6 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn to_u8(&self) -> u8 {
-        *self as u8
-    }
-
     pub fn from(value: u8) -> Self {
         match value {
             0x0 => Error::NA,
