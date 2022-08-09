@@ -1,6 +1,12 @@
 use hyper::{Request, Body, Uri};
+use rand::Rng;
+use srp::client::SrpClient;
+use srp::groups::G_3072;
 use tokio::net::TcpStream;
 use tokio::io::{AsyncRead, AsyncWrite};
+
+use srp;
+use sha2::Sha512;
 
 use crate::req_builder::pairing_req_builder;
 use crate::tlv;
@@ -81,7 +87,10 @@ impl HAPClient {
         }
 
 
-
+        let mut a = [0u8; 64];
+        let mut rng = rand::thread_rng();
+        rng.fill(&mut a);
+        let client = SrpClient::<Sha512>::new(&a, &G_3072);
 
 
         Ok(())

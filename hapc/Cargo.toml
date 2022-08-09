@@ -10,3 +10,5 @@ byteorder = "1.4.3"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 tokio = { version = "^1.17.0", features = ["full"] }
 srp = "^0.5"
+sha2 = "0.9"
+rand = "^0.8.5"
