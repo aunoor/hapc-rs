@@ -1,12 +1,12 @@
 [package]
-name = "hapcl"
+name = "hapc"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
-winapi = { version = "0.3.9", features = ["std", "winsock2", "mswsock", "handleapi", "ws2ipdef", "ws2tcpip"] }
-tokio = { version = "^1.17.0", features = ["full"] }
 byteorder = "1.4.3"
+hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
+tokio = { version = "^1.17.0", features = ["full"] }
+srp = "^0.5"

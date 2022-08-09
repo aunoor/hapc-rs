@@ -1,2 +1,2 @@
 [workspace]
-members = ["hapcl", "tools"]
+members = ["hapc", "tools"]

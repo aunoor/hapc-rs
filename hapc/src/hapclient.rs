@@ -1,12 +1,9 @@
-use hyper::body::HttpBody;
 use hyper::{Request, Body, Uri};
 use tokio::net::TcpStream;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use hyper::client::conn;
-
 use crate::req_builder::pairing_req_builder;
-use crate::tlv::{self, Method, Value};
+use crate::tlv;
 
 pub struct HAPClient {
     stream: TcpStream,
@@ -45,11 +42,15 @@ impl HAPClient {
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
         let req = pairing_req_builder(url, host_str, "".to_string(), v);
 
+
         let result = sender.send_request(req).await;
         if result.is_err() {
             println!("{:?}", result);
             return Err(());
         }
+
+
+        //check for M2 answer
         let resp = result.unwrap();
 
         println!("Response: {}", resp.status());
@@ -64,11 +65,23 @@ impl HAPClient {
         let vec = buf.unwrap().to_vec();
         let tlv_bytes = vec.as_slice();
 
-        let tlv_map = tlv::decode(tlv_bytes);
-        println!("tlv keys: {:?}", tlv_map.keys());
+        let tlv_response_map = tlv::decode(tlv_bytes);
+        println!("tlv keys: {:?}", tlv_response_map.keys());
  
+        //check for correct stage
+        if !tlv_response_map.contains_key(&(tlv::Type::State as u8)) {
+        }
 
-        //check for M2 answer
+        //check for error
+        if tlv_response_map.contains_key(&(tlv::Type::Error as u8)) {
+            let a = tlv_response_map.get(&(tlv::Type::Error as u8)).unwrap();
+            let err = tlv::Value::Error(tlv::Error::from(a[0]));
+            println!("{:?}", err);
+            return Err(());
+        }
+
+
+
 
 
         Ok(())

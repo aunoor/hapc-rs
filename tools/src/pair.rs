@@ -1,4 +1,4 @@
-use hapcl;
+use hapc;
 use tokio::net::TcpStream;
 
 
@@ -15,7 +15,7 @@ pub(crate) fn pair() {
             return;
         }
 
-        let r = hapcl::HAPClient::pair(stream.unwrap()).await;
+        let r = hapc::HAPClient::pair(stream.unwrap()).await;
         if r.is_err() {
             println!("pairing failed");
         }

@@ -119,6 +119,12 @@ pub enum Type {
     Separator = 0xFF,
 }
 
+impl Type {
+    pub fn u8(&self) -> u8 {
+        *self as u8
+    }
+}
+
 /// The variants of `Value` can hold the corresponding values to the types provided by `Type`.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -130,7 +136,7 @@ pub enum Value {
     Proof(Vec<u8>),
     EncryptedData(Vec<u8>),
     State(u8),
-//    Error(Error),
+    Error(Error),
     RetryDelay(usize),
     Certificate(Vec<u8>),
     Signature(Vec<u8>),
@@ -152,7 +158,7 @@ impl Value {
             Value::Proof(proof) => (Type::Proof as u8, proof),
             Value::EncryptedData(data) => (Type::EncryptedData as u8, data),
             Value::State(state) => (Type::State as u8, vec![state]),
-//            Value::Error(error) => (Type::Error as u8, vec![error as u8]),
+            Value::Error(error) => (Type::Error as u8, vec![error as u8]),
             Value::RetryDelay(delay) => {
                 let val = delay as u16;
                 let mut vec: Vec<u8> = Vec::new();
@@ -185,24 +191,47 @@ pub enum Method {
     ListPairings = 5,
 }
 
-// #[allow(dead_code)]
-// #[derive(Debug, Copy, Clone, Error)]
-// pub enum Error {
-//     #[error("Generic error to handle unexpected errors.")]
-//     Unknown = 0x01,
-//     #[error("Setup code or signature verification failed.")]
-//     Authentication = 0x02,
-//     #[error("Client must look at the retry delay TLV item and wait that many seconds before retrying.")]
-//     Backoff = 0x03,
-//     #[error("Server cannot accept any more pairings.")]
-//     MaxPeers = 0x04,
-//     #[error("Server reached its maximum number of authentication attempts.")]
-//     MaxTries = 0x05,
-//     #[error("Server pairing method is unavailable.")]
-//     Unavailable = 0x06,
-//     #[error("Server is busy and cannot accept a pairing request at this time.")]
-//     Busy = 0x07,
-// }
+#[allow(dead_code)]
+//#[derive(Debug, Copy, Clone, Error)]
+#[derive(Debug, Copy, Clone)]
+pub enum Error {
+    NA = 0x0,
+    //#[error("Generic error to handle unexpected errors.")]
+    Unknown = 0x01,
+    //#[error("Setup code or signature verification failed.")]
+    Authentication = 0x02,
+    //#[error("Client must look at the retry delay TLV item and wait that many seconds before retrying.")]
+    Backoff = 0x03,
+    //#[error("Server cannot accept any more pairings.")]
+    MaxPeers = 0x04,
+    //#[error("Server reached its maximum number of authentication attempts.")]
+    MaxTries = 0x05,
+    //#[error("Server pairing method is unavailable.")]
+    Unavailable = 0x06,
+    //#[error("Server is busy and cannot accept a pairing request at this time.")]
+    Busy = 0x07,
+    Reserved,
+}
+
+impl Error {
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
+    }
+
+    pub fn from(value: u8) -> Self {
+        match value {
+            0x0 => Error::NA,
+            0x01 => Error::Unknown,
+            0x02 => Error::Authentication,
+            0x03 => Error::Backoff,
+            0x04 => Error::MaxPeers,
+            0x05 => Error::MaxTries,
+            0x06 => Error::Unavailable,
+            0x07 => Error::Busy,
+            _ => Error::Reserved,
+        }
+    }
+}
 
 // impl From<error::Error> for Error {
 //     fn from(err: error::Error) -> Self {
