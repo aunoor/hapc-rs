@@ -36,13 +36,13 @@ impl HAPClient {
         }
         });
 
-
-        let m1 = vec![tlv::Value::Method(tlv::Method::PairSetup).as_tlv()];
-        let v = tlv::encode(m1);
-
+        //Let start from M1 state
+        let tlv_vec = vec![
+            tlv::Value::State(1).as_tlv(), //kTLVType_State <M1>
+            tlv::Value::Method(tlv::Method::PairSetupWithAuth).as_tlv() //kTLVType_Method <Pair Setup with Authentication>
+            ];
+        let v = tlv::encode(tlv_vec);
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
-        println!("pair-setup uri: {}", url.to_string());
-        //let req = pairing_req_builder(url, host_str, "".to_string(), &[1,2,3]);
         let req = pairing_req_builder(url, host_str, "".to_string(), v);
 
         let result = sender.send_request(req).await;
@@ -50,18 +50,28 @@ impl HAPClient {
             println!("{:?}", result);
             return Err(());
         }
-        let mut resp = result.unwrap();
+        let resp = result.unwrap();
 
         println!("Response: {}", resp.status());
 
-        while let Some(next) = resp.data().await {
-
+        // Concatenate the body stream into a single buffer...
+        let buf = hyper::body::to_bytes(resp.into_body()).await;
+        if buf.is_err() {
+            println!("{:?}", buf);
+            return Err(());
         }
 
-        //res.ok().unwrap().data().await;
+        let vec = buf.unwrap().to_vec();
+        let tlv_bytes = vec.as_slice();
+
+        let tlv_map = tlv::decode(tlv_bytes);
+        println!("tlv keys: {:?}", tlv_map.keys());
+ 
+
+        //check for M2 answer
 
 
-         Ok(())
+        Ok(())
     }
 
     pub fn connect(stream: TcpStream) -> HAPClient {

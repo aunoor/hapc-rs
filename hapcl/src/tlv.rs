@@ -177,7 +177,8 @@ impl Value {
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone)]
 pub enum Method {
-    PairSetup = 1,
+    PairSetup = 0,
+    PairSetupWithAuth = 1,
     PairVerify = 2,
     AddPairing = 3,
     RemovePairing = 4,
