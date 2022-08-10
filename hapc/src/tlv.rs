@@ -1,6 +1,6 @@
 //File based on tlv.rs from https://github.com/ewilken/hap-rs.git
 
-use std::{cell, collections::HashMap, io, str};
+use std::collections::HashMap;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 
@@ -119,6 +119,12 @@ pub enum Type {
     Separator = 0xFF,
 }
 
+impl Into<u8> for Type {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
 /// The variants of `Value` can hold the corresponding values to the types provided by `Type`.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -207,8 +213,8 @@ pub enum Error {
     Reserved,
 }
 
-impl Error {
-    pub fn from(value: u8) -> Self {
+impl From<u8> for Error {
+    fn from(value: u8) -> Self {
         match value {
             0x0 => Error::NA,
             0x01 => Error::Unknown,
