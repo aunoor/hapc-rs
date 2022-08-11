@@ -40,34 +40,22 @@ pub fn compute_m1<D: Digest>(a_pub: &[u8], b_pub: &[u8], key: &[u8]) -> Output<D
 pub fn compute_m1_spec<D: Digest>(a_pub: &[u8], b_pub: &[u8], u: &[u8], salt: &[u8], key: &[u8], group: &SrpGroup) -> Output<D> {
     let mut dhn = D::new();
     dhn.update(&group.n.to_bytes_be());
-    let mut hn = BigUint::from_bytes_be(&dhn.finalize());
-    println!("hn: {:x?}",hn.to_bytes_be().as_slice());
+    let hn = BigUint::from_bytes_be(&dhn.finalize());
 
     let mut dhg = D::new();
-
     dhg.update(&group.g.to_bytes_be());
     let hg = BigUint::from_bytes_be(&dhg.finalize());
-    println!("hg: {:x?}",hg.to_bytes_be().as_slice());
 
     let hng = hn.bitxor(hg);
 
 
-    //let hng = hn ^ hg;
-    println!("hng: {:x?}",hng.to_bytes_be().as_slice());
-
-    //hn.bitxor_assign(hg);
-    //let hng = hn;
-
     let mut dhi = D::new();
     dhi.update(u);
     let hi = dhi.finalize();
-    println!("hi: {:x?}",hi.as_slice());
 
     let mut dk = D::new();
     dk.update(key);
     let k = dk.finalize();
-    println!("k: {:x?}", k);
-    println!("salt: {:x?}", salt);
 
     let mut d = D::new();
     // M = H(H(N) xor H(g), H(I), s, A, B, K)

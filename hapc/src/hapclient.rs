@@ -147,7 +147,7 @@ impl HAPClient {
         }
         let verifier = vr.unwrap();
         let self_proof = verifier.proof();
-        //let self_proof = calculate_m1::<Sha512>(&server_pub, &self_pub, server_salt, verifier.key(), &G_3072);
+        let self_proof = calculate_m1::<Sha512>(&server_pub, &self_pub, server_salt, verifier.key(), &G_3072);
 
         let tlv_vec = vec![
             tlv::Value::State(3), //kTLVType_State <M3>
@@ -255,6 +255,10 @@ fn calculate_m1<D: Digest>(
     dhi.update(b"Pair-Setup");
     let hi = dhi.finalize();
 
+    let mut dk = D::new();
+    dk.update(key);
+    let k = dk.finalize();
+
     let mut d = D::new();
     // M = H(H(N) xor H(g), H(I), s, A, B, K)
     d.update(&hng.to_bytes_be());
@@ -262,7 +266,7 @@ fn calculate_m1<D: Digest>(
     d.update(salt);
     d.update(a_pub);
     d.update(b_pub);
-    d.update(key);
+    d.update(k);
 
     d.finalize().as_slice().to_vec()
 }
