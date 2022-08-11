@@ -1,12 +1,16 @@
+use std::ops::BitXor;
+
 use hyper::{Request, Body, Uri};
+use num_bigint::BigUint;
 use rand::Rng;
 use srp::client::SrpClient;
 use srp::groups::G_3072;
+use srp::types::SrpGroup;
 use tokio::net::TcpStream;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use srp::client;
-use sha2::Sha512;
+use sha2::{Sha512, Digest};
 
 use crate::req_builder::pairing_req_builder;
 use crate::tlv::{self, Encodable};
@@ -143,6 +147,7 @@ impl HAPClient {
         }
         let verifier = vr.unwrap();
         let self_proof = verifier.proof();
+        //let self_proof = calculate_m1::<Sha512>(&server_pub, &self_pub, server_salt, verifier.key(), &G_3072);
 
         let tlv_vec = vec![
             tlv::Value::State(3), //kTLVType_State <M3>
@@ -224,4 +229,40 @@ impl HAPClient {
     pub fn connect(stream: TcpStream) -> HAPClient {
         return Self::new(stream);
     }
+}
+
+
+// Because srp lib calc M1 as H(A, B, K), we must calculate spec's M1 = H(H(N) XOR H(g) | H(U) | s | A | B | K) by hands
+fn calculate_m1<D: Digest>(
+    b_pub: &[u8],
+    a_pub: &[u8],
+    salt: &[u8],
+    key: &[u8],
+    group: &SrpGroup,
+) -> Vec<u8> {
+    let mut dhn = D::new();
+    dhn.update(&group.n.to_bytes_be());
+    let hn = BigUint::from_bytes_be(&dhn.finalize());
+
+    let mut dhg = D::new();
+
+    dhg.update(&group.g.to_bytes_be());
+    let hg = BigUint::from_bytes_be(&dhg.finalize());
+
+    let hng = hn.bitxor(hg);
+
+    let mut dhi = D::new();
+    dhi.update(b"Pair-Setup");
+    let hi = dhi.finalize();
+
+    let mut d = D::new();
+    // M = H(H(N) xor H(g), H(I), s, A, B, K)
+    d.update(&hng.to_bytes_be());
+    d.update(&hi);
+    d.update(salt);
+    d.update(a_pub);
+    d.update(b_pub);
+    d.update(key);
+
+    d.finalize().as_slice().to_vec()
 }

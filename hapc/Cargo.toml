@@ -9,6 +9,8 @@ edition = "2021"
 byteorder = "1.4.3"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 tokio = { version = "^1.17.0", features = ["full"] }
-srp = "^0.6"
+# srp = "^0.6"
+srp = { path = "../vendor/srp"}
 sha2 = "^0.10"
 rand = "^0.8.5"
+num-bigint = "0.4.3"
