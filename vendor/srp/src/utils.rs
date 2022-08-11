@@ -53,9 +53,9 @@ pub fn compute_m1_spec<D: Digest>(a_pub: &[u8], b_pub: &[u8], u: &[u8], salt: &[
     dhi.update(u);
     let hi = dhi.finalize();
 
-    let mut dk = D::new();
-    dk.update(key);
-    let k = dk.finalize();
+    // let mut dk = D::new();
+    // dk.update(key);
+    // let k = dk.finalize();
 
     let mut d = D::new();
     // M = H(H(N) xor H(g), H(I), s, A, B, K)
@@ -64,7 +64,7 @@ pub fn compute_m1_spec<D: Digest>(a_pub: &[u8], b_pub: &[u8], u: &[u8], salt: &[
     d.update(salt);
     d.update(a_pub);
     d.update(b_pub);
-    d.update(k);
+    d.update(key);
     d.finalize()
 }
 

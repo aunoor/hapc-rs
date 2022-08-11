@@ -9,8 +9,16 @@ edition = "2021"
 byteorder = "1.4.3"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 tokio = { version = "^1.17.0", features = ["full"] }
-# srp = "^0.6"
-srp = { path = "../vendor/srp"}
-sha2 = "^0.10"
-rand = "^0.8.5"
+
+#srp = "0.6"
+srp = { path = "../vendor/srp" }
+sha2 = "^0.9.9"
 num-bigint = "0.4.3"
+ed25519-dalek = { version = "^1.0.1", features = ["std"] }
+
+rand = "^0.7"
+hkdf = "^0.9"
+ulid = "1.0.0"
+#aead = "0.5.1"
+aead = "0.4.3"
+chacha20poly1305 = "0.8"

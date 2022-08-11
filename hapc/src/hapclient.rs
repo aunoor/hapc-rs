@@ -1,16 +1,26 @@
 use std::ops::BitXor;
 
 use hyper::{Request, Body, Uri};
-use num_bigint::BigUint;
+
 use rand::Rng;
+use rand::rngs::OsRng;
+
+use num_bigint::BigUint;
 use srp::client::SrpClient;
 use srp::groups::G_3072;
 use srp::types::SrpGroup;
+use sha2::{Sha512, Digest};
+
+use hkdf::Hkdf;
+use aead::{generic_array::GenericArray, AeadInPlace, NewAead};
+use chacha20poly1305::ChaCha20Poly1305;
+
+
 use tokio::net::TcpStream;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use srp::client;
-use sha2::{Sha512, Digest};
+
+
 
 use crate::req_builder::pairing_req_builder;
 use crate::tlv::{self, Encodable};
@@ -49,11 +59,16 @@ impl HAPClient {
 
         //Let start from M1 state
         println!("sending M1");
+        // let tlv_vec = vec![
+        //     tlv::Value::State(1).as_tlv(), //kTLVType_State <M1>
+        //     tlv::Value::Method(tlv::Method::PairSetupWithAuth).as_tlv() //kTLVType_Method <Pair Setup with Authentication>
+        //     ];
         let tlv_vec = vec![
-            tlv::Value::State(1).as_tlv(), //kTLVType_State <M1>
-            tlv::Value::Method(tlv::Method::PairSetupWithAuth).as_tlv() //kTLVType_Method <Pair Setup with Authentication>
+            tlv::Value::State(1), //kTLVType_State <M1>
+            tlv::Value::Method(tlv::Method::PairSetup), //kTLVType_Method <Pair Setup with Authentication>
+            tlv::Value::Flags(0),
             ];
-        let v = tlv::encode(tlv_vec);
+        let v = tlv_vec.encode();
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
         let req = pairing_req_builder(url, host_str.clone(), "".to_string(), v);
 
@@ -147,7 +162,7 @@ impl HAPClient {
         }
         let verifier = vr.unwrap();
         let self_proof = verifier.proof();
-        let self_proof = calculate_m1::<Sha512>(&server_pub, &self_pub, server_salt, verifier.key(), &G_3072);
+        //let self_proof = calculate_m1::<Sha512>(&server_pub, &self_pub, server_salt, verifier.key(), &G_3072);
 
         let tlv_vec = vec![
             tlv::Value::State(3), //kTLVType_State <M3>
@@ -215,12 +230,112 @@ impl HAPClient {
         };
 
 
-
         let pc = verifier.verify_server(server_proof);
         if pc.is_err() {
             println!("{:?}", pc.err());
             return Err(());
         }
+
+
+
+        //Generate M5 req
+        let mut csprng = OsRng{};
+        let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
+        let device_ltpk = keypair.public;
+
+        let device_x = hkdf_extract_and_expand(
+            b"Pair-Setup-Controller-Sign-Salt",
+            verifier.key(),
+            b"Pair-Setup-Controller-Sign-Info",
+        )?;
+
+        let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
+
+        let mut device_info: Vec<u8> = Vec::new();
+                device_info.extend(&device_x);
+                device_info.extend(device_pairing_id.as_bytes());
+                device_info.extend(device_ltpk.as_bytes());
+
+
+        let mut prehashed: Sha512 = Sha512::new();
+        prehashed.update(device_info);
+
+        let device_signature = keypair.sign_prehashed(prehashed, None).unwrap();
+
+        let encripted_tlv_vec = vec![
+            tlv::Value::Identifier(device_pairing_id), //kTLVType_Identifier
+            tlv::Value::PublicKey(device_ltpk.as_bytes().to_vec()), //kTLVType_PublicKey
+            tlv::Value::Signature(device_signature.to_bytes().to_vec()), //kTLVType_Signature
+            ];
+        let ev = encripted_tlv_vec.encode();
+
+        let mut nonce = vec![0; 4];
+        nonce.extend(b"PS-Msg06");
+
+        let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&device_x));
+
+        let mut encrypted_data = Vec::new();
+        encrypted_data.extend_from_slice(&ev);
+
+        let auth_tag = aead.encrypt_in_place_detached(GenericArray::from_slice(&nonce), &[], &mut encrypted_data).unwrap();
+
+        encrypted_data.extend(&auth_tag);
+
+        let tlv_vec = vec![
+            tlv::Value::State(5), //kTLVType_State <M5>
+            tlv::Value::EncryptedData(encrypted_data),
+            ];
+        let v = tlv_vec.encode();
+
+        let url: hyper::Uri = ("/pair-setup").parse().unwrap();
+        let req = pairing_req_builder(url, host_str.clone(), "".to_string(), v);
+        let result = sender.send_request(req).await;
+        if result.is_err() {
+            println!("{:?}", result);
+            return Err(());
+        }
+
+
+        //check for M5 answer
+        println!("process M4");
+        let resp = result.unwrap();
+
+        println!("Response: {}", resp.status());
+
+        // Concatenate the body stream into a single buffer...
+        let buf = hyper::body::to_bytes(resp.into_body()).await;
+        if buf.is_err() {
+            println!("{:?}", buf);
+            return Err(());
+        }
+
+        let vec = buf.unwrap().to_vec();
+        let tlv_bytes = vec.as_slice();
+
+        let tlv_response_map = tlv::decode(tlv_bytes);
+        println!("tlv keys: {:?}", tlv_response_map.keys());
+
+        //check for correct state
+        if !tlv_response_map.contains_key(&(tlv::Type::State.into())) {
+            println!("tlv response don't contain State field");
+            return Err(());
+        }
+        let state = tlv_response_map.get(&(tlv::Type::State.into())).unwrap()[0];
+        if state != 6 {
+            println!("tlv State contain wrong value({} != 6)", state);
+            return Err(());
+        }
+
+        //check for error
+        if tlv_response_map.contains_key(&(tlv::Type::Error.into())) {
+            let a = tlv_response_map.get(&(tlv::Type::Error.into())).unwrap();
+            let err = tlv::Value::Error(tlv::Error::from(a[0]));
+            println!("tlv error: {:?}", err);
+            return Err(());
+        }
+
+
+
 
 
         Ok(())
@@ -229,6 +344,17 @@ impl HAPClient {
     pub fn connect(stream: TcpStream) -> HAPClient {
         return Self::new(stream);
     }
+}
+
+pub(crate) fn hkdf_extract_and_expand(salt: &[u8], ikm: &[u8], info: &[u8]) -> Result<[u8; 32], ()> {
+    let mut okm = [0u8; 32];
+
+    Hkdf::<Sha512>::new(Some(salt), ikm)
+        .expand(info, &mut okm)
+        //.or(Err(Error::HkdfInvalidLength))?;
+        .or(Err(()))?;
+
+    Ok(okm)
 }
 
 
