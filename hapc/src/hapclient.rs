@@ -1,6 +1,7 @@
 use std::ops::BitXor;
 
 use ed25519_dalek::Signer;
+use ed25519_dalek::ed25519::signature::Signature;
 use hyper::{Request, Body, Uri};
 
 use rand::Rng;
@@ -261,6 +262,9 @@ impl HAPClient {
             verifier.key(),
             b"Pair-Setup-Controller-Sign-Info",
         )?;
+        println!("verifier.key(): {:x?}", verifier.key());
+        println!("device_x(output_key): {:x?}", device_x);
+        println!("device_ltpk: {:x?}", device_ltpk.as_bytes());
 
         //let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
         let mut uuid_rng = [0u8; 16];
@@ -270,11 +274,12 @@ impl HAPClient {
 
         let mut device_info: Vec<u8> = Vec::new();
                 device_info.extend(&device_x);
-                device_info.extend(device_pairing_id.as_bytes().to_vec());
+                device_info.extend(device_pairing_id.to_string().as_bytes());
                 device_info.extend(device_ltpk.as_bytes());
 
-
+        println!("device_info: {:x?}", device_info.as_slice());
         let device_signature = keypair.sign(&device_info);
+        println!("device_signature: {:x?}", device_signature.as_bytes());
 
         let encoded_sub_tlv = vec![
             tlv::Value::Identifier(device_pairing_id.to_string()), //kTLVType_Identifier
@@ -294,7 +299,7 @@ impl HAPClient {
 
         let auth_tag = aead.encrypt_in_place_detached(GenericArray::from_slice(&nonce), &[], &mut encrypted_data).unwrap();
         println!("MAC: {:x?}", auth_tag);
-        println!("encrypted_data: {:x?}", encrypted_data);
+        //println!("encrypted_data: {:x?}", encrypted_data);
 
         encrypted_data.extend(&auth_tag);
 
