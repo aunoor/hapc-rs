@@ -1,5 +1,6 @@
 use std::ops::BitXor;
 
+use ed25519_dalek::Signer;
 use hyper::{Request, Body, Uri};
 
 use rand::Rng;
@@ -145,8 +146,9 @@ impl HAPClient {
         //Generate M3 req
         println!("sending M3");
         let mut a = [0u8; 64];
-        let mut rng = rand::thread_rng();
-        rng.fill(&mut a);
+        //let mut rng = rand::thread_rng();
+        let mut csprng = OsRng{};
+        csprng.fill(&mut a);
 
         let client = SrpClient::<Sha512>::new(&G_3072);
         let self_pub = client.compute_public_ephemeral(&a);
@@ -170,7 +172,11 @@ impl HAPClient {
             tlv::Value::Proof(self_proof.to_vec()), //kTLVType_Proof
             ];
         let v = tlv_vec.encode();
-        //let v = tlv::encode(tlv_vec);
+
+
+        println!("shared_key(S): {:x?}", verifier.key());
+
+
 
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
         let req = pairing_req_builder(url, host_str.clone(), "".to_string(), v);
@@ -239,7 +245,14 @@ impl HAPClient {
 
 
         //Generate M5 req
-        let mut csprng = OsRng{};
+        let encryption_key = hkdf_extract_and_expand(
+            b"Pair-Setup-Encrypt-Salt",
+            verifier.key(),
+            b"Pair-Setup-Encrypt-Info"
+        )?;
+        println!("K: {:x?}", encryption_key);
+
+
         let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
         let device_ltpk = keypair.public;
 
@@ -249,35 +262,39 @@ impl HAPClient {
             b"Pair-Setup-Controller-Sign-Info",
         )?;
 
-        let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
+        //let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
+        let mut uuid_rng = [0u8; 16];
+        csprng.fill(&mut uuid_rng);
+
+        let device_pairing_id = uuid::Builder::from_random_bytes(uuid_rng).as_uuid().clone();
 
         let mut device_info: Vec<u8> = Vec::new();
                 device_info.extend(&device_x);
-                device_info.extend(device_pairing_id.as_bytes());
+                device_info.extend(device_pairing_id.as_bytes().to_vec());
                 device_info.extend(device_ltpk.as_bytes());
 
 
-        let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(device_info);
+        let device_signature = keypair.sign(&device_info);
 
-        let device_signature = keypair.sign_prehashed(prehashed, None).unwrap();
-
-        let encripted_tlv_vec = vec![
-            tlv::Value::Identifier(device_pairing_id), //kTLVType_Identifier
+        let encoded_sub_tlv = vec![
+            tlv::Value::Identifier(device_pairing_id.to_string()), //kTLVType_Identifier
             tlv::Value::PublicKey(device_ltpk.as_bytes().to_vec()), //kTLVType_PublicKey
             tlv::Value::Signature(device_signature.to_bytes().to_vec()), //kTLVType_Signature
             ];
-        let ev = encripted_tlv_vec.encode();
+        let ev = encoded_sub_tlv.encode();
 
         let mut nonce = vec![0; 4];
-        nonce.extend(b"PS-Msg06");
+        nonce.extend(b"PS-Msg05");
 
-        let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&device_x));
+        //let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&device_x));
+        let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&encryption_key));
 
         let mut encrypted_data = Vec::new();
         encrypted_data.extend_from_slice(&ev);
 
         let auth_tag = aead.encrypt_in_place_detached(GenericArray::from_slice(&nonce), &[], &mut encrypted_data).unwrap();
+        println!("MAC: {:x?}", auth_tag);
+        println!("encrypted_data: {:x?}", encrypted_data);
 
         encrypted_data.extend(&auth_tag);
 
@@ -296,8 +313,8 @@ impl HAPClient {
         }
 
 
-        //check for M5 answer
-        println!("process M4");
+        //check for M6 answer
+        println!("process M6");
         let resp = result.unwrap();
 
         println!("Response: {}", resp.status());

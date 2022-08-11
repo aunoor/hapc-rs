@@ -18,7 +18,7 @@ ed25519-dalek = { version = "^1.0.1", features = ["std"] }
 
 rand = "^0.7"
 hkdf = "^0.9"
-ulid = "1.0.0"
-#aead = "0.5.1"
+#ulid = "1.0.0"
 aead = "0.4.3"
 chacha20poly1305 = "0.8"
+uuid = "1.1.2"
