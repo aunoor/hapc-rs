@@ -1,9 +1,9 @@
-use std::ops::{BitXor, BitXorAssign};
+use std::ops::BitXor;
 
 use digest::{Digest, Output};
 use num_bigint::BigUint;
 
-use crate::types::SrpGroup;
+use srp::types::SrpGroup;
 
 // u = H(PAD(A) | PAD(B))
 pub fn compute_u<D: Digest>(a_pub: &[u8], b_pub: &[u8]) -> BigUint {
@@ -27,8 +27,10 @@ pub fn compute_k<D: Digest>(params: &SrpGroup) -> BigUint {
     BigUint::from_bytes_be(d.finalize().as_slice())
 }
 
+
 // M1 = H(A, B, K) this doesn't follow the spec but apparently no one does for M1
 // M1 should equal =  H(H(N) XOR H(g) | H(U) | s | A | B | K) according to the spec
+#[allow(dead_code)]
 pub fn compute_m1<D: Digest>(a_pub: &[u8], b_pub: &[u8], key: &[u8]) -> Output<D> {
     let mut d = D::new();
     d.update(a_pub);

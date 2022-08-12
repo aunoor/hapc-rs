@@ -10,6 +10,10 @@ pub fn bytes_to_hex(data: &[u8]) -> String {
     str
 }
 
+pub fn bytes_to_string(data: &[u8]) -> String {
+    data.iter().map(|&x| x as char).collect::<String>()
+}
+
 pub(crate) fn hkdf_extract_and_expand(salt: &[u8], ikm: &[u8], info: &[u8]) -> Result<[u8; 32], ()> {
     let mut okm = [0u8; 32];
 

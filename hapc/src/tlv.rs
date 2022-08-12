@@ -11,6 +11,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 //use crate::{error, pairing::Permissions};
 
 /// The permissions of a paired controller.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Permissions {
     User,

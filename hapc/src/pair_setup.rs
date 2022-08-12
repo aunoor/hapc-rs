@@ -5,16 +5,14 @@ use tokio::net::TcpStream;
 use rand::Rng;
 use rand::rngs::OsRng;
 
-use num_bigint::BigUint;
-use srp::client::{SrpClient, SrpClientVerifier};
+use crate::srp::client::{SrpClient, SrpClientVerifier};
 use srp::groups::G_3072;
-use srp::types::SrpGroup;
-use sha2::{Sha512, Digest};
+use sha2::Sha512;
 
-use ed25519_dalek::{Signer, Verifier, Keypair};
-use ed25519_dalek::ed25519::signature::Signature;
+use ed25519_dalek::{Signer, Verifier, Keypair, PublicKey, SecretKey};
 use aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use chacha20poly1305::ChaCha20Poly1305;
+use uuid::Uuid;
 
 
 
@@ -23,10 +21,10 @@ use crate::utils;
 
 #[derive(Debug, Clone)]
 pub struct PairResult {
-    pub device_pairing_id: Box<[u8]>,
+    pub device_pairing_id: String,
     pub device_ltsk: Box<[u8]>,
     pub device_ltpk: Box<[u8]>,
-    pub accessory_pairing_id: Box<[u8]>,
+    pub accessory_pairing_id: String,
     pub accessory_ltpk: Box<[u8]>,
 }
 
@@ -49,19 +47,54 @@ struct PairingController<'a> {
     server_salt: Vec<u8>,
     srp_client: SrpClient::<'a, Sha512>,
     srp_verifier: Option<SrpClientVerifier<Sha512>>,
-    ed25519_keypair: Option<Keypair>,
+    ed25519_keypair: Box<Keypair>,
 }
 
-pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: String) -> Result<Box<PairResult>, PairingError> {
+pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: String, device_pairing_id: Uuid, device_ltsk: Vec<u8>, device_ltpk: Vec<u8>) -> Result<Box<PairResult>, PairingError> {
     let host_str = stream.peer_addr().unwrap().to_string();
 
+    let mut csprng = OsRng{};
 
-    // let mut uuid_rng = [0u8; 16];
-    // let mut csprng = OsRng{};
-    // csprng.fill(&mut uuid_rng);
-    // let device_pairing_id = uuid::Builder::from_random_bytes(uuid_rng).as_uuid().into_bytes().to_vec();
-//todo: if device_pairing_id is empty generate new
-    let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string().into_bytes();
+    //if given device_id is empty then generate new one
+    let device_pairing_id = if let false = device_pairing_id.is_nil() {
+        device_pairing_id.to_string().into_bytes().to_vec()
+    } else {
+        let mut uuid_rng = [0u8; 16];
+        csprng.fill(&mut uuid_rng);
+
+        uuid::Builder::from_random_bytes(uuid_rng).as_uuid().to_string().into_bytes().to_vec()
+    };
+
+    // Checking for keypair inconsistency
+    if device_ltpk.is_empty() {
+        if !device_ltsk.is_empty() {
+            return Err(PairingError::CryptoError);
+        }
+    }
+    if device_ltsk.is_empty() {
+        if !device_ltpk.is_empty() {
+            return Err(PairingError::CryptoError);
+        }
+    }
+
+    //creating keypair object
+    let mut kp = ed25519_dalek::Keypair::generate(&mut csprng);
+    let keypair = if let true = device_ltpk.is_empty() {
+        kp
+    } else {
+        kp.public = if let Some(k) = PublicKey::from_bytes(device_ltpk.as_slice()).ok() {
+            k
+        } else {
+            return Err(PairingError::CryptoError);
+        };
+        kp.secret = if let Some(k) = SecretKey::from_bytes(device_ltsk.as_slice()).ok() {
+            k
+        } else {
+            return Err(PairingError::CryptoError);
+        };
+        kp
+    };
+
 
     let mut pairing_controller = PairingController {
         pin,
@@ -72,7 +105,7 @@ pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: Strin
         server_salt: vec![],
         srp_client: SrpClient::<Sha512>::new(&G_3072),
         srp_verifier: None,
-        ed25519_keypair: None
+        ed25519_keypair: Box::new(keypair),
     };
 
     pairing_controller.pairing(stream).await
@@ -283,9 +316,7 @@ impl PairingController<'_> {
         };
         //println!("K: {:x?}", encryption_key);
 
-        let mut csprng = OsRng{};
-        self.ed25519_keypair.replace(ed25519_dalek::Keypair::generate(&mut csprng));
-        let keypair = self.ed25519_keypair.as_ref().unwrap();
+        let keypair = self.ed25519_keypair.as_ref();
         let device_ltpk = keypair.public;
 
         let device_x = if let Some(v) = utils::hkdf_extract_and_expand(
@@ -303,15 +334,9 @@ impl PairingController<'_> {
         // println!("device_x(output_key): {:x?}", device_x);
         // println!("device_ltpk: {:x?}", device_ltpk.as_bytes());
 
-        //let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
-        let mut uuid_rng = [0u8; 16];
-        csprng.fill(&mut uuid_rng);
-
-        let device_pairing_id = uuid::Builder::from_random_bytes(uuid_rng).as_uuid().clone();
-
         let mut device_info: Vec<u8> = Vec::new();
                 device_info.extend(&device_x);
-                device_info.extend(device_pairing_id.to_string().as_bytes());
+                device_info.extend(self.device_pairing_id.clone());
                 device_info.extend(device_ltpk.as_bytes());
 
         //println!("device_info: {:x?}", device_info.as_slice());
@@ -319,7 +344,7 @@ impl PairingController<'_> {
         //println!("device_signature: {:x?}", device_signature.as_bytes());
 
         let encoded_sub_tlv = vec![
-            tlv::Value::Identifier(device_pairing_id.to_string()), //kTLVType_Identifier
+            tlv::Value::Identifier(utils::bytes_to_string(self.device_pairing_id.as_slice())), //kTLVType_Identifier
             tlv::Value::PublicKey(device_ltpk.as_bytes().to_vec()), //kTLVType_PublicKey
             tlv::Value::Signature(device_signature.to_bytes().to_vec()), //kTLVType_Signature
             ];
@@ -475,30 +500,13 @@ impl PairingController<'_> {
             return Err(PairingError::CryptoError);
         }
 
-
-
-        //println!("Paired succesfully");
-
         let pair_result = PairResult {
-            device_pairing_id: self.device_pairing_id.clone().into_boxed_slice(),
-            device_ltsk: Box::new(self.ed25519_keypair.as_ref().unwrap().secret.to_bytes()),
-            device_ltpk: Box::new(self.ed25519_keypair.as_ref().unwrap().public.to_bytes()),
+            device_pairing_id: utils::bytes_to_string(&self.device_pairing_id),
+            device_ltsk: Box::new(self.ed25519_keypair.secret.to_bytes()),
+            device_ltpk: Box::new(self.ed25519_keypair.public.to_bytes()),
+            accessory_pairing_id: utils::bytes_to_string(accessory_pairing_id),
             accessory_ltpk: Box::new(accessory_ltpk.to_bytes()),
-            accessory_pairing_id: accessory_pairing_id.clone().into_boxed_slice(),
         };
-
-        // let device_pairing_id_str = utils::bytes_to_hex(self.device_pairing_id.as_slice());
-        // println!("iOSDevicePairingID: {}", device_pairing_id_str);
-        // let device_ltsk_str = utils::bytes_to_hex(self.ed25519_keypair.as_ref().unwrap().secret.as_bytes());
-        // println!("iOSDeviceLTSK: {}", device_ltsk_str);
-        // let device_ltpk_str = utils::bytes_to_hex(self.ed25519_keypair.as_ref().unwrap().public.as_bytes());
-        // println!("iOSDeviceLTPK: {}", device_ltpk_str);
-
-        // let accessory_ltpk_str = utils::bytes_to_hex(accessory_ltpk.as_bytes());
-        // println!("AccessoryLTPK: {}", accessory_ltpk_str);
-        // let accessory_pairing_id_str = utils::bytes_to_hex(accessory_pairing_id);
-        // println!("AccessoryPairingID: {}", accessory_pairing_id_str);
-
 
         Ok(Box::new(pair_result))
     }

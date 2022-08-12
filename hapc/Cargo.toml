@@ -6,19 +6,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
 byteorder = "1.4.3"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 tokio = { version = "^1.17.0", features = ["full"] }
 
-#srp = "0.6"
-srp = { path = "../vendor/srp" }
-sha2 = "^0.9.9"
-num-bigint = "0.4.3"
-ed25519-dalek = { version = "^1.0.1", features = ["std"] }
-
 rand = "^0.7"
-hkdf = "^0.9"
-ulid = "1.0.0"
+
 aead = "0.4.3"
 chacha20poly1305 = "0.8"
+digest = "0.9"
+ed25519-dalek = { version = "^1.0.1", features = ["std"] }
+sha2 = "^0.9.9"
+srp = "0.6"
 uuid = "1.1.2"
+#num-traits = "0.2"
+num-bigint = "^0.4"
+hkdf = "^0.9"
+subtle = "2.4"
+
+
+[dev-dependencies]
+num-traits = "0.2"

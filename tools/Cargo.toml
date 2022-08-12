@@ -9,3 +9,5 @@ edition = "2021"
 hapc = { path = "../hapc" }
 winapi = { version = "0.3.9", features = ["std", "winsock2", "mswsock", "handleapi", "ws2ipdef", "ws2tcpip"] }
 tokio = { version = "^1.17.0", features = ["full"] }
+hex = "0.4.3"
+uuid = "1.1.2"
