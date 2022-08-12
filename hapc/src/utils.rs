@@ -2,7 +2,7 @@ use std::fmt::Write;
 use hkdf::Hkdf;
 use sha2::Sha512;
 
-pub(crate) fn bytes_to_hex(data: &[u8]) -> String {
+pub fn bytes_to_hex(data: &[u8]) -> String {
     let mut str = String::with_capacity(data.len()*2);
     for byte in data {
         _ = write!(&mut str, "{:02X}", byte);

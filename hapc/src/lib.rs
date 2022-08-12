@@ -9,4 +9,4 @@ pub use pair_setup::PairResult as PairResult;
 
 
 mod tlv;
-mod utils;
+pub mod utils;

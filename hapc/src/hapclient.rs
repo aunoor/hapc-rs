@@ -27,7 +27,9 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::req_builder::pairing_req_builder;
 use crate::tlv::{self, Encodable};
 
-use crate::utils;
+use crate::{utils, pair_setup};
+
+use crate::pair_setup::{PairResult, PairingError};
 
 pub struct HAPClient {
     stream: TcpStream,
@@ -38,6 +40,10 @@ impl HAPClient {
         HAPClient {
             stream
         }
+    }
+
+    pub async fn pair2(stream: TcpStream, pin: String, user_agent: String) -> Result<Box<PairResult>, PairingError> {
+        pair_setup::pair_setup(stream, pin, user_agent).await
     }
 
     pub async fn pair(stream: TcpStream) -> Result<(),()> {
