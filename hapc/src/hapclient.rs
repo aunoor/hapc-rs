@@ -1,5 +1,5 @@
 use std::ops::BitXor;
-use std::fmt::Write;
+
 
 use ed25519_dalek::{Signer, Verifier};
 use ed25519_dalek::ed25519::signature::Signature;
@@ -14,7 +14,7 @@ use srp::groups::G_3072;
 use srp::types::SrpGroup;
 use sha2::{Sha512, Digest};
 
-use hkdf::Hkdf;
+
 use aead::{generic_array::GenericArray, AeadInPlace, NewAead};
 use chacha20poly1305::ChaCha20Poly1305;
 
@@ -24,9 +24,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 
 
-
 use crate::req_builder::pairing_req_builder;
 use crate::tlv::{self, Encodable};
+
+use crate::utils;
 
 pub struct HAPClient {
     stream: TcpStream,
@@ -247,7 +248,7 @@ impl HAPClient {
 
 
         //Generate M5 req
-        let encryption_key = hkdf_extract_and_expand(
+        let encryption_key = utils::hkdf_extract_and_expand(
             b"Pair-Setup-Encrypt-Salt",
             verifier.key(),
             b"Pair-Setup-Encrypt-Info"
@@ -258,7 +259,7 @@ impl HAPClient {
         let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
         let device_ltpk = keypair.public;
 
-        let device_x = hkdf_extract_and_expand(
+        let device_x = utils::hkdf_extract_and_expand(
             b"Pair-Setup-Controller-Sign-Salt",
             verifier.key(),
             b"Pair-Setup-Controller-Sign-Info",
@@ -358,7 +359,7 @@ impl HAPClient {
             return Err(());
         }
 
-        let encryption_key = hkdf_extract_and_expand(
+        let encryption_key = utils::hkdf_extract_and_expand(
             b"Pair-Setup-Encrypt-Salt",
             verifier.key(),
             b"Pair-Setup-Encrypt-Info"
@@ -419,7 +420,7 @@ impl HAPClient {
         let accessory_signature = ed25519_dalek::Signature::from_bytes(accessory_signature_tlv).unwrap();
 
 
-        let accessory_x = hkdf_extract_and_expand(
+        let accessory_x = utils::hkdf_extract_and_expand(
             b"Pair-Setup-Accessory-Sign-Salt",
             verifier.key(),
             b"Pair-Setup-Accessory-Sign-Info",
@@ -440,16 +441,16 @@ impl HAPClient {
 
         println!("Paired succesfully");
 
-        let device_pairing_id_str = bytes_to_hex(device_pairing_id.to_string().as_bytes());
+        let device_pairing_id_str = utils::bytes_to_hex(device_pairing_id.to_string().as_bytes());
         println!("iOSDevicePairingID: {}", device_pairing_id_str);
-        let device_ltsk_str = bytes_to_hex(keypair.secret.as_bytes());
+        let device_ltsk_str = utils::bytes_to_hex(keypair.secret.as_bytes());
         println!("iOSDeviceLTSK: {}", device_ltsk_str);
-        let device_ltpk_str = bytes_to_hex(keypair.public.as_bytes());
+        let device_ltpk_str = utils::bytes_to_hex(keypair.public.as_bytes());
         println!("iOSDeviceLTPK: {}", device_ltpk_str);
 
-        let accessory_ltpk_str = bytes_to_hex(accessory_ltpk.as_bytes());
+        let accessory_ltpk_str = utils::bytes_to_hex(accessory_ltpk.as_bytes());
         println!("AccessoryLTPK: {}", accessory_ltpk_str);
-        let accessory_pairing_id_str = bytes_to_hex(accessory_pairing_id);
+        let accessory_pairing_id_str = utils::bytes_to_hex(accessory_pairing_id);
         println!("AccessoryPairingID: {}", accessory_pairing_id_str);
 
 
@@ -461,24 +462,7 @@ impl HAPClient {
     }
 }
 
-pub(crate) fn bytes_to_hex(data: &[u8]) -> String {
-    let mut str = String::with_capacity(data.len()*2);
-    for byte in data {
-        _ = write!(&mut str, "{:02X}", byte);
-    }
-    str
-}
 
-pub(crate) fn hkdf_extract_and_expand(salt: &[u8], ikm: &[u8], info: &[u8]) -> Result<[u8; 32], ()> {
-    let mut okm = [0u8; 32];
-
-    Hkdf::<Sha512>::new(Some(salt), ikm)
-        .expand(info, &mut okm)
-        //.or(Err(Error::HkdfInvalidLength))?;
-        .or(Err(()))?;
-
-    Ok(okm)
-}
 
 
 // Because srp lib calc M1 as H(A, B, K), we must calculate spec's M1 = H(H(N) XOR H(g) | H(U) | s | A | B | K) by hands
