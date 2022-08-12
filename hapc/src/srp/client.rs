@@ -1,3 +1,7 @@
+//-*- mode: Rust;  -*-
+
+//File based on code srp-0.6 (https://github.com/RustCrypto/PAKEs)
+
 use std::marker::PhantomData;
 
 use sha2::digest::{Digest, Output};

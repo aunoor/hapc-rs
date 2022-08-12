@@ -1,3 +1,7 @@
+//-*- mode: Rust;  -*-
+
+//File based on code srp-0.6 (https://github.com/RustCrypto/PAKEs)
+
 use std::ops::BitXor;
 
 use digest::{Digest, Output};
