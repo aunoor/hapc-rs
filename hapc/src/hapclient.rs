@@ -1,6 +1,7 @@
 use std::ops::BitXor;
+use std::fmt::Write;
 
-use ed25519_dalek::Signer;
+use ed25519_dalek::{Signer, Verifier};
 use ed25519_dalek::ed25519::signature::Signature;
 use hyper::{Request, Body, Uri};
 
@@ -251,7 +252,7 @@ impl HAPClient {
             verifier.key(),
             b"Pair-Setup-Encrypt-Info"
         )?;
-        println!("K: {:x?}", encryption_key);
+        //println!("K: {:x?}", encryption_key);
 
 
         let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
@@ -262,9 +263,9 @@ impl HAPClient {
             verifier.key(),
             b"Pair-Setup-Controller-Sign-Info",
         )?;
-        println!("verifier.key(): {:x?}", verifier.key());
-        println!("device_x(output_key): {:x?}", device_x);
-        println!("device_ltpk: {:x?}", device_ltpk.as_bytes());
+        // println!("verifier.key(): {:x?}", verifier.key());
+        // println!("device_x(output_key): {:x?}", device_x);
+        // println!("device_ltpk: {:x?}", device_ltpk.as_bytes());
 
         //let device_pairing_id = ulid::Generator::new().generate().unwrap().to_string();
         let mut uuid_rng = [0u8; 16];
@@ -277,9 +278,9 @@ impl HAPClient {
                 device_info.extend(device_pairing_id.to_string().as_bytes());
                 device_info.extend(device_ltpk.as_bytes());
 
-        println!("device_info: {:x?}", device_info.as_slice());
+        //println!("device_info: {:x?}", device_info.as_slice());
         let device_signature = keypair.sign(&device_info);
-        println!("device_signature: {:x?}", device_signature.as_bytes());
+        //println!("device_signature: {:x?}", device_signature.as_bytes());
 
         let encoded_sub_tlv = vec![
             tlv::Value::Identifier(device_pairing_id.to_string()), //kTLVType_Identifier
@@ -291,14 +292,13 @@ impl HAPClient {
         let mut nonce = vec![0; 4];
         nonce.extend(b"PS-Msg05");
 
-        //let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&device_x));
         let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&encryption_key));
 
         let mut encrypted_data = Vec::new();
         encrypted_data.extend_from_slice(&ev);
 
         let auth_tag = aead.encrypt_in_place_detached(GenericArray::from_slice(&nonce), &[], &mut encrypted_data).unwrap();
-        println!("MAC: {:x?}", auth_tag);
+        //println!("MAC: {:x?}", auth_tag);
         //println!("encrypted_data: {:x?}", encrypted_data);
 
         encrypted_data.extend(&auth_tag);
@@ -316,6 +316,8 @@ impl HAPClient {
             println!("{:?}", result);
             return Err(());
         }
+
+
 
 
         //check for M6 answer
@@ -356,8 +358,99 @@ impl HAPClient {
             return Err(());
         }
 
+        let encryption_key = hkdf_extract_and_expand(
+            b"Pair-Setup-Encrypt-Salt",
+            verifier.key(),
+            b"Pair-Setup-Encrypt-Info"
+        )?;
+
+        let encrypted_tlv = if let Some(v) = tlv_response_map.get(&(tlv::Type::EncryptedData.into())) {
+            v
+        } else {
+            println!("tlv response don't contain EncryptedData field");
+            return Err(());
+        };
+
+        let mut nonce = vec![0; 4];
+        nonce.extend(b"PS-Msg06");
+
+        let encrypted_data = Vec::from(&encrypted_tlv[..encrypted_tlv.len() - 16]);
+        let auth_tag = Vec::from(&encrypted_tlv[encrypted_tlv.len() - 16..]);
+
+        let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&encryption_key));
+        let mut decrypted_data = Vec::new();
+        decrypted_data.extend_from_slice(&encrypted_data);
+
+        let dr = aead.decrypt_in_place_detached(
+            GenericArray::from_slice(&nonce),
+            &[],
+            &mut decrypted_data,
+            GenericArray::from_slice(&auth_tag),
+        );
+        if dr.is_err() {
+            println!("TLV decript failed");
+            return Err(());
+        }
+
+        let sub_tlv = tlv::decode(&decrypted_data);
+        let accessory_pairing_id = if let Some(v) = sub_tlv.get(&(tlv::Type::Identifier.into())) {
+            v
+        } else {
+            println!("SubTLV don't contain Identifier field");
+            return Err(());
+        };
+
+        let accessory_ltpk_tlv = if let Some(v) = sub_tlv.get(&(tlv::Type::PublicKey.into())) {
+            v
+        } else {
+            println!("SubTLV don't contain PublicKey field");
+            return Err(());
+        };
+
+        let accessory_signature_tlv = if let Some(v) = sub_tlv.get(&(tlv::Type::Signature.into())) {
+            v
+        } else {
+            println!("SubTLV don't contain Signature field");
+            return Err(());
+        };
 
 
+        let accessory_ltpk = ed25519_dalek::PublicKey::from_bytes(accessory_ltpk_tlv).unwrap();
+        let accessory_signature = ed25519_dalek::Signature::from_bytes(accessory_signature_tlv).unwrap();
+
+
+        let accessory_x = hkdf_extract_and_expand(
+            b"Pair-Setup-Accessory-Sign-Salt",
+            verifier.key(),
+            b"Pair-Setup-Accessory-Sign-Info",
+        ).unwrap();
+
+        let mut accessory_info: Vec<u8> = Vec::new();
+        accessory_info.extend(&accessory_x);
+        accessory_info.extend(accessory_pairing_id);
+        accessory_info.extend(accessory_ltpk.as_bytes());
+
+        let res = accessory_ltpk.verify(&accessory_info, &accessory_signature);
+        if res.is_err() {
+            println!("Verifing accessory Signature failed");
+            return Err(());
+        }
+
+
+
+        println!("Paired succesfully");
+
+        let device_pairing_id_str = bytes_to_hex(device_pairing_id.to_string().as_bytes());
+        println!("iOSDevicePairingID: {}", device_pairing_id_str);
+        let device_ltsk_str = bytes_to_hex(keypair.secret.as_bytes());
+        println!("iOSDeviceLTSK: {}", device_ltsk_str);
+        let device_ltpk_str = bytes_to_hex(keypair.public.as_bytes());
+        println!("iOSDeviceLTPK: {}", device_ltpk_str);
+
+        let accessory_ltpk_str = bytes_to_hex(accessory_ltpk.as_bytes());
+        println!("AccessoryLTPK: {}", accessory_ltpk_str);
+        let accessory_pairing_id_str = bytes_to_hex(accessory_pairing_id);
+        println!("AccessoryPairingID: {}", accessory_pairing_id_str);
 
 
         Ok(())
@@ -366,6 +459,14 @@ impl HAPClient {
     pub fn connect(stream: TcpStream) -> HAPClient {
         return Self::new(stream);
     }
+}
+
+pub(crate) fn bytes_to_hex(data: &[u8]) -> String {
+    let mut str = String::with_capacity(data.len()*2);
+    for byte in data {
+        _ = write!(&mut str, "{:02X}", byte);
+    }
+    str
 }
 
 pub(crate) fn hkdf_extract_and_expand(salt: &[u8], ikm: &[u8], info: &[u8]) -> Result<[u8; 32], ()> {
