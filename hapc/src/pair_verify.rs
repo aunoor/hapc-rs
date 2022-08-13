@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 use uuid::Uuid;
 
 use crate::hapclient::PairingError;
-use crate::{req_builder, utils};
+use crate::{req_builder, utils, SessionSharedKey};
 use crate::tlv::{self, Encodable};
 
 struct PairVerifySession {
@@ -28,7 +28,13 @@ struct PairVerifySession {
     session_key: Vec<u8>,
 }
 
-pub(crate) async fn pair_verify(stream: TcpStream, device_pairing_id: Uuid, device_ltsk: Vec<u8>, device_ltpk: Vec<u8>, user_agent: String, accessory_pairing_id: String, accessory_ltpk: Vec<u8>) -> Result<(), PairingError> {
+pub(crate) async fn pair_verify(stream: TcpStream,
+                                device_pairing_id: Uuid,
+                                device_ltsk: Vec<u8>,
+                                device_ltpk: Vec<u8>,
+                                user_agent: String,
+                                accessory_pairing_id: String,
+                                accessory_ltpk: Vec<u8>) -> Result<SessionSharedKey, PairingError> {
     let host_str = stream.peer_addr().unwrap().to_string();
 
     let mut csprng = OsRng{};
@@ -49,7 +55,12 @@ pub(crate) async fn pair_verify(stream: TcpStream, device_pairing_id: Uuid, devi
         device_session_pk: Box::new(device_session_pk),
     };
 
-    pairverify_controller.pair_verify(stream, device_session_sk).await
+    let result = pairverify_controller.pair_verify(stream, device_session_sk).await;
+    if result.is_err() {
+        return Err(result.err().unwrap());
+    }
+
+    Ok(pairverify_controller.session_shared_secret)
 }
 
 

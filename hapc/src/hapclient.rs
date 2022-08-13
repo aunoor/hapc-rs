@@ -1,7 +1,7 @@
 use tokio::net::TcpStream;
 use uuid::Uuid;
 
-use crate::{pair_setup, pair_verify};
+use crate::{pair_setup, pair_verify, SessionSharedKey};
 
 #[derive(Debug, Clone)]
 pub struct PairResult {
@@ -98,7 +98,7 @@ impl HAPClient {
         ).await
     }
 
-    pub async fn pair_verify(&self, stream: TcpStream) -> Result<(), PairingError> {
+    pub async fn pair_verify(&self, stream: TcpStream) -> Result<SessionSharedKey, PairingError> {
         pair_verify::pair_verify(
             stream,
             self.device_pairing_id.clone(),
