@@ -5,6 +5,7 @@ use tokio::net::TcpStream;
 use rand::Rng;
 use rand::rngs::OsRng;
 
+use crate::hapclient::{PairingError, PairResult};
 use crate::srp::client::{SrpClient, SrpClientVerifier};
 use srp::groups::G_3072;
 use sha2::Sha512;
@@ -17,28 +18,9 @@ use uuid::Uuid;
 
 
 use crate::tlv::{self, Encodable};
-use crate::utils;
+use crate::{utils, req_builder};
 
-#[derive(Debug, Clone)]
-pub struct PairResult {
-    pub device_pairing_id: String,
-    pub device_ltsk: Box<[u8]>,
-    pub device_ltpk: Box<[u8]>,
-    pub accessory_pairing_id: String,
-    pub accessory_ltpk: Box<[u8]>,
-}
-
-#[derive(Debug, Clone)]
-pub enum PairingError {
-    ServerResponseError, // Connection troubles, broked html response
-    ServerError, //404, 500...
-    TlvPairingError, // Pairing error returnded from accessory
-    TlvError, // Required fields absense, wrong step answers...
-    CryptoError, //Encrypt/decript error
-}
-
-
-struct PairingController<'a> {
+struct PairingSession<'a> {
     pin: String,
     device_pairing_id: Vec<u8>,
     user_agent: String,
@@ -96,7 +78,7 @@ pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: Strin
     };
 
 
-    let mut pairing_controller = PairingController {
+    let mut pairing_controller = PairingSession {
         pin,
         device_pairing_id,
         host_str,
@@ -111,7 +93,7 @@ pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: Strin
     pairing_controller.pairing(stream).await
 }
 
-impl PairingController<'_> {
+impl PairingSession<'_> {
 
     pub(crate) async fn pairing(&mut self, stream: TcpStream) -> Result<Box<PairResult>, PairingError> {
         let h = hyper::client::conn::handshake(stream).await;
@@ -513,24 +495,9 @@ impl PairingController<'_> {
 
     fn pairing_req_builder(&self, body: Vec<u8>) -> Request<Body> {
         let url: hyper::Uri = ("/pair-setup").parse().unwrap();
+        let user_agent = self.user_agent.clone();
+        let host = self.host_str.clone();
 
-        let mut r = Request::post(url).header("Host", self.host_str.clone()).
-                            header("Content-Type","application/pairing+tlv8");
-
-        if !self.user_agent.is_empty() {
-            r = r.header("User-Agent", self.user_agent.clone());
-        }
-
-        if !body.is_empty() {
-            r = r.header("Content-Length", body.len());
-        }
-
-        let b = if let true = body.is_empty() {
-            Body::empty()
-        } else {
-            Body::from(body)
-        };
-
-        r.body(b).unwrap()
+        req_builder::pairing_req_builder(url, host, user_agent, body)
     }
 }

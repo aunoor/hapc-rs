@@ -4,7 +4,8 @@ use hapc;
 use tokio::net::TcpStream;
 use uuid;
 
-
+#[allow(non_snake_case)]
+#[allow(dead_code)]
 pub(crate) fn pair() {
     let rt = tokio::runtime::Runtime::new().unwrap();
 
@@ -48,7 +49,6 @@ pub(crate) fn pair() {
         println!("AccessoryPairingID: {}", accessory_pairing_id_str);
         let accessory_ltpk_str = hapc::utils::bytes_to_hex(&pair_result.accessory_ltpk);
         println!("AccessoryLTPK: {}", accessory_ltpk_str);
-
     });
 
 }
