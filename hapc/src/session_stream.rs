@@ -138,7 +138,7 @@ enum DecState {
 struct SessionDecryptor {
     read_key: [u8;32],
     rec_buffer: Vec<u8>,
-    data_length: u16,
+    pkt_length: u16,
     dec_state: DecState,
     dec_count: u64, //counter of decripted pakets
 }
@@ -148,7 +148,7 @@ impl SessionDecryptor {
         SessionDecryptor {
             read_key,
             rec_buffer: vec![],
-            data_length: 0,
+            pkt_length: 0,
             dec_state: DecState::WaitForHeader,
             dec_count: 0,
         }
@@ -160,23 +160,23 @@ impl SessionDecryptor {
         if self.dec_state == DecState::WaitForHeader {
             if self.rec_buffer.len() >= 2 {
                 let data_length = LittleEndian::read_u16(data);
-                self.data_length = data_length + 2 + 16; //adding 2 for pkt len + 16 for authTag
+                self.pkt_length = data_length + 2 + 16; //adding 2 for pkt len + 16 for authTag
                 self.dec_state = DecState::WaitForData;
             }
         }
 
-        if (self.rec_buffer.len() as u16) <= self.data_length {
+        if (self.pkt_length == 0) || ((self.rec_buffer.len() as u16) < self.pkt_length) {
             return Ok(vec![]);
         }
 
-        let (pkt, _) = self.rec_buffer.split_at((self.data_length + 1).into());
+        let (pkt, _) = self.rec_buffer.split_at((self.pkt_length + 1).into());
 
         let res = self.decode_buffer(pkt);
         if res.is_err() {
             return Err(());
         }
         self.dec_count += 1;
-        self.rec_buffer.drain(..self.data_length as usize);
+        self.rec_buffer.drain(..self.pkt_length as usize);
         self.dec_state = DecState::WaitForHeader;
 
         Ok(res.ok().unwrap())
