@@ -1,6 +1,6 @@
 use std::{pin::Pin, task::{Context, Poll}, net::SocketAddr, sync::{Arc, Mutex}};
 
-use tokio::{io::{AsyncRead, AsyncWrite, ReadBuf, self}};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf, self};
 
 use crate::session_stream::SessionStream;
 
@@ -48,17 +48,10 @@ impl AsyncWrite for SessionStreamWrapper {
         r
     }
 
-    // fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-    //     let stream_wrapper = Pin::into_inner(self);
-    //     let r = AsyncWrite::poll_close(Pin::new(&mut stream_wrapper.stream), cx);
-    //     r
-    // }
-
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        // let stream_wrapper = Pin::into_inner(self);
-        // let r = AsyncWrite::poll_flush(Pin::new(&mut stream_wrapper.stream.lock().as_mut().unwrap()), cx);
-        // r
-        Poll::Pending
+        let stream_wrapper = Pin::into_inner(self);
+        let r = AsyncWrite::poll_flush(Pin::new(&mut stream_wrapper.stream.lock().unwrap().as_mut()), cx);
+        r
     }
 
     fn poll_write_vectored(self: Pin<&mut Self>, cx: &mut Context<'_>, bufs: &[std::io::IoSlice<'_>],) -> Poll<io::Result<usize>> {
@@ -75,9 +68,8 @@ impl AsyncWrite for SessionStreamWrapper {
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
-        // let stream_wrapper = Pin::into_inner(self);
-        // let r = AsyncWrite::poll_shutdown(Pin::new(&mut stream_wrapper.stream.get_mut().unwrap()), cx);
-        // r
-        Poll::Pending
+        let stream_wrapper = Pin::into_inner(self);
+        let r = AsyncWrite::poll_shutdown(Pin::new(&mut stream_wrapper.stream.lock().unwrap().as_mut()), cx);
+        r
     }
 }
