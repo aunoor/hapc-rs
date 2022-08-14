@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use hyper::{Body, Response, Request};
 use hyper::client::conn::SendRequest;
 use tokio::net::TcpStream;
@@ -6,7 +8,9 @@ use rand::Rng;
 use rand::rngs::OsRng;
 
 use crate::hapclient::{PairingError, PairResult};
+use crate::session_stream::SessionStream;
 use crate::srp::client::{SrpClient, SrpClientVerifier};
+use crate::stream_wrapper::SessionStreamWrapper;
 use srp::groups::G_3072;
 use sha2::Sha512;
 
@@ -32,7 +36,7 @@ struct PairingSession<'a> {
     ed25519_keypair: Box<Keypair>,
 }
 
-pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: String, device_pairing_id: Uuid, device_ltsk: Vec<u8>, device_ltpk: Vec<u8>) -> Result<Box<PairResult>, PairingError> {
+pub(crate) async fn pair_setup(stream: SessionStreamWrapper, pin: String, user_agent: String, device_pairing_id: Uuid, device_ltsk: Vec<u8>, device_ltpk: Vec<u8>) -> Result<Box<PairResult>, PairingError> {
     let host_str = stream.peer_addr().unwrap().to_string();
 
     let mut csprng = OsRng{};
@@ -95,7 +99,7 @@ pub(crate) async fn pair_setup(stream: TcpStream, pin: String, user_agent: Strin
 
 impl PairingSession<'_> {
 
-    pub(crate) async fn pairing(&mut self, stream: TcpStream) -> Result<Box<PairResult>, PairingError> {
+    pub(crate) async fn pairing(&mut self, stream: SessionStreamWrapper) -> Result<Box<PairResult>, PairingError> {
         let h = hyper::client::conn::handshake(stream).await;
         if h.is_err() {
             return Err(PairingError::ServerResponseError);

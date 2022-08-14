@@ -11,6 +11,8 @@ use tokio::net::TcpStream;
 use uuid::Uuid;
 
 use crate::hapclient::PairingError;
+use crate::session_stream::SessionStream;
+use crate::stream_wrapper::SessionStreamWrapper;
 use crate::{req_builder, utils, SessionSharedKey};
 use crate::tlv::{self, Encodable};
 
@@ -28,7 +30,7 @@ struct PairVerifySession {
     session_key: Vec<u8>,
 }
 
-pub(crate) async fn pair_verify(stream: TcpStream,
+pub(crate) async fn pair_verify(stream: SessionStreamWrapper,
                                 device_pairing_id: Uuid,
                                 device_ltsk: Vec<u8>,
                                 device_ltpk: Vec<u8>,
@@ -65,7 +67,7 @@ pub(crate) async fn pair_verify(stream: TcpStream,
 
 
 impl PairVerifySession {
-    pub(crate) async fn pair_verify(&mut self, stream: TcpStream, device_session_ltsk: EphemeralSecret) -> Result<(), PairingError> {
+    pub(crate) async fn pair_verify(&mut self, stream: SessionStreamWrapper, device_session_ltsk: EphemeralSecret) -> Result<(), PairingError> {
 
         let h = hyper::client::conn::handshake(stream).await;
         if h.is_err() {

@@ -24,6 +24,7 @@ uuid = "1.1.2"
 num-bigint = "^0.4"
 hkdf = "^0.9"
 subtle = "2.4"
+futures = "0.3.21"
 
 
 [build-dependencies]

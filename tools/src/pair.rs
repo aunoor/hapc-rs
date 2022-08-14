@@ -26,9 +26,9 @@ pub(crate) fn pair() {
         let hcb = hapc::Builder::new().set_user_agent("hapc".to_string()).
                                                   set_keys(iOSDeviceLTSK, iOSDeviceLTPK).
                                                   set_device_pairing_id(iOSDevicePairingID).
-                                                  finalize();
+                                                  finalize(stream.unwrap());
 
-        let r = hcb.pair(stream.unwrap(), "123-00-321".to_string()).await;
+        let r = hcb.pair("123-00-321".to_string()).await;
         if r.is_err() {
             println!("pairing failed: {:?}", r.err());
             return;

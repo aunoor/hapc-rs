@@ -7,6 +7,8 @@ pub type SessionSharedKey = Vec<u8>;
 mod req_builder;
 mod pair_setup;
 mod pair_verify;
+mod session_stream;
+mod stream_wrapper;
 mod tlv;
 mod srp;
 pub mod utils;

@@ -28,9 +28,9 @@ pub(crate) fn pair_verify() {
                                 set_keys(iOSDeviceLTSK, iOSDeviceLTPK).
                                 set_device_pairing_id(iOSDevicePairingID).
                                 set_accessory_key(AccessoryPairingID, AccessoryLTPK).
-                                finalize();
+                                finalize(stream.unwrap());
 
-        let r = hcb.pair_verify(stream.unwrap()).await;
+        let r = hcb.pair_verify().await;
         if r.is_err() {
             println!("pair verifing failed: {:?}", r.err());
             return;

@@ -1,7 +1,9 @@
-use tokio::net::TcpStream;
+use std::{mem, cell::RefCell, sync::{Arc, Mutex }, pin::Pin};
+
+use tokio::{net::TcpStream, io::AsyncReadExt};
 use uuid::Uuid;
 
-use crate::{pair_setup, pair_verify, SessionSharedKey};
+use crate::{pair_setup, pair_verify, SessionSharedKey, session_stream::SessionStream, stream_wrapper::SessionStreamWrapper};
 
 #[derive(Debug, Clone)]
 pub struct PairResult {
@@ -27,7 +29,7 @@ pub struct Builder {
     device_ltpk: Vec<u8>,
     accessory_pairing_id: String,
     accessory_ltpk: Vec<u8>,
-    user_agent: String
+    user_agent: String,
 }
 
 impl Builder {
@@ -64,7 +66,8 @@ impl Builder {
         self
     }
 
-    pub fn finalize(&self) -> HAPClient {
+    pub fn finalize(&mut self, stream: TcpStream) -> HAPClient {
+        let s = Arc::new(Mutex::new(Box::new(SessionStream::new(stream))));
         HAPClient {
             user_agent: self.user_agent.clone(),
             device_pairing_id: self.device_pairing_id,
@@ -72,6 +75,7 @@ impl Builder {
             device_ltpk: self.device_ltpk.clone(),
             accessory_pairing_id: self.accessory_pairing_id.clone(),
             accessory_ltpk: self.accessory_ltpk.clone(),
+            stream: s,
         }
     }
 }
@@ -84,12 +88,14 @@ pub struct HAPClient {
     device_ltpk: Vec<u8>,
     accessory_pairing_id: String,
     accessory_ltpk: Vec<u8>,
+    stream: Arc<Mutex<Box<SessionStream>>>,
 }
 
 impl HAPClient {
-    pub async fn pair(&self, stream: TcpStream, pin: String) -> Result<Box<PairResult>, PairingError> {
+    pub async fn pair(self, pin: String) -> Result<Box<PairResult>, PairingError> {
+        let stream_wrapper = SessionStreamWrapper::new(self.stream);
         pair_setup::pair_setup(
-            stream,
+            stream_wrapper,
             pin,
             self.user_agent.clone(),
             self.device_pairing_id.clone(),
@@ -98,9 +104,10 @@ impl HAPClient {
         ).await
     }
 
-    pub async fn pair_verify(&self, stream: TcpStream) -> Result<SessionSharedKey, PairingError> {
+    pub async fn pair_verify(&self) -> Result<SessionSharedKey, PairingError> {
+        let stream_wrapper = SessionStreamWrapper::new(self.stream.clone());
         pair_verify::pair_verify(
-            stream,
+            stream_wrapper,
             self.device_pairing_id.clone(),
             self.device_ltsk.clone(),
             self.device_ltpk.clone(),
