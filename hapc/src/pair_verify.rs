@@ -6,12 +6,10 @@ use x25519_dalek::EphemeralSecret;
 use hyper::{Body, Response, Request};
 use hyper::client::conn::SendRequest;
 use rand::rngs::OsRng;
-use tokio::net::TcpStream;
 
 use uuid::Uuid;
 
 use crate::hapclient::PairingError;
-use crate::session_stream::SessionStream;
 use crate::stream_wrapper::SessionStreamWrapper;
 use crate::{req_builder, utils, SessionSharedKey};
 use crate::tlv::{self, Encodable};

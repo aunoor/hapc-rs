@@ -1,6 +1,6 @@
-use std::{mem, cell::RefCell, sync::{Arc, Mutex }, pin::Pin};
+use std::sync::{Arc, Mutex };
 
-use tokio::{net::TcpStream, io::AsyncReadExt};
+use tokio::net::TcpStream;
 use uuid::Uuid;
 
 use crate::{pair_setup, pair_verify, SessionSharedKey, session_stream::SessionStream, stream_wrapper::SessionStreamWrapper};
@@ -115,5 +115,29 @@ impl HAPClient {
             self.accessory_pairing_id.clone(),
             self.accessory_ltpk.clone(),
         ).await
+    }
+
+    pub async fn session(&self) -> Result<(), PairingError> {
+        let stream_wrapper = SessionStreamWrapper::new(self.stream.clone());
+        let res = pair_verify::pair_verify(
+            stream_wrapper,
+            self.device_pairing_id.clone(),
+            self.device_ltsk.clone(),
+            self.device_ltpk.clone(),
+            self.user_agent.clone(),
+            self.accessory_pairing_id.clone(),
+            self.accessory_ltpk.clone(),
+        ).await;
+
+        if res.is_err() {
+            return Err(res.err().unwrap());
+        }
+
+        let shared_secret = res.ok().unwrap();
+        let mut ss: [u8;32] = [0; 32];
+        ss.copy_from_slice(shared_secret.as_slice());
+        self.stream.clone().lock().unwrap().set_shared_secret(&ss);
+
+        Ok(())
     }
 }

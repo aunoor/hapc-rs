@@ -16,7 +16,7 @@ impl SessionStreamWrapper {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        let a = self.stream.lock().unwrap().as_mut();
+        //let a = self.stream.lock().unwrap().as_mut();
         self.stream.lock().unwrap().peer_addr()
     }
 }
@@ -28,10 +28,6 @@ impl AsyncRead for SessionStreamWrapper {
         buf: &mut ReadBuf,
     ) -> Poll<std::result::Result<(), io::Error>> {
         let stream_wrapper = Pin::into_inner(self);
-
-        // let mut encrypted_readbuf_inner  = [0u8; 1042];
-        // let mut r_buf = ReadBuf::new(&mut encrypted_readbuf_inner);
-
         let r = AsyncRead::poll_read(Pin::new(&mut stream_wrapper.stream.lock().unwrap().as_mut()), cx, buf);
         r
     }

@@ -1,16 +1,11 @@
-use std::cell::RefCell;
-
 use hyper::{Body, Response, Request};
 use hyper::client::conn::SendRequest;
-use tokio::net::TcpStream;
 
 use rand::Rng;
 use rand::rngs::OsRng;
 
 use crate::hapclient::{PairingError, PairResult};
-use crate::session_stream::SessionStream;
 use crate::srp::client::{SrpClient, SrpClientVerifier};
-use crate::stream_wrapper::SessionStreamWrapper;
 use srp::groups::G_3072;
 use sha2::Sha512;
 
@@ -20,7 +15,7 @@ use chacha20poly1305::ChaCha20Poly1305;
 use uuid::Uuid;
 
 
-
+use crate::stream_wrapper::SessionStreamWrapper;
 use crate::tlv::{self, Encodable};
 use crate::{utils, req_builder};
 

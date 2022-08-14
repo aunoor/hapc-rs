@@ -7,7 +7,6 @@ use tokio::{net::TcpStream, io::{AsyncRead, AsyncWrite, ReadBuf, self}};
 
 use crate::utils;
 
-
 pub(crate) struct SessionStream {
     stream: TcpStream,
     session_decryptor: RefCell<Option<SessionDecryptor>>,
@@ -166,7 +165,7 @@ impl SessionDecryptor {
             }
         }
 
-        if (self.rec_buffer.len() as u16) < self.data_length {
+        if (self.rec_buffer.len() as u16) <= self.data_length {
             return Ok(vec![]);
         }
 
