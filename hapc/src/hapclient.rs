@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex };
 use tokio::net::TcpStream;
 use uuid::Uuid;
 
-use crate::{pair_setup, pair_verify, SessionSharedKey, session_stream::SessionStream, stream_wrapper::SessionStreamWrapper};
+use crate::{pair_setup, pair_verify, SessionSharedKey, session_stream::SessionStream, stream_wrapper::SessionStreamWrapper, hap_session::create_session};
 
 #[derive(Debug, Clone)]
 pub struct PairResult {
@@ -137,6 +137,10 @@ impl HAPClient {
         let mut ss: [u8;32] = [0; 32];
         ss.copy_from_slice(shared_secret.as_slice());
         self.stream.clone().lock().unwrap().set_shared_secret(&ss);
+
+        let stream_wrapper = SessionStreamWrapper::new(self.stream.clone());
+
+        create_session(stream_wrapper).await;
 
         Ok(())
     }
