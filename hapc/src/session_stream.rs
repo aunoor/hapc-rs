@@ -39,6 +39,7 @@ impl SessionStream {
         self.session_decryptor.borrow_mut().replace(decryptor);
         let encryptor = SessionEncryptor::new(compute_write_key(shared_secret).unwrap());
         self.session_encryptor.borrow_mut().replace(encryptor);
+        println!("SessionStream: switch to encrypted transport");
     }
 }
 
@@ -50,28 +51,47 @@ impl AsyncRead for SessionStream {
     ) -> Poll<std::result::Result<(), io::Error>> {
         let session_stream = Pin::into_inner(self);
 
-        let r = AsyncRead::poll_read(Pin::new(&mut session_stream.stream), cx, buf);
-        if session_stream.session_decryptor.borrow().is_none() {
+        let is_encrypted = session_stream.session_decryptor.borrow().is_some();
+
+        let mut int_buf_vec : Vec<u8> = vec![];
+        if is_encrypted {
+            int_buf_vec.resize(1042, 0);
+        } else {
+            int_buf_vec.resize(buf.remaining(), 0);
+        }
+
+        let mut int_buf = ReadBuf::new(&mut int_buf_vec);
+
+        let r = AsyncRead::poll_read(Pin::new(&mut session_stream.stream), cx, &mut int_buf);
+        if is_encrypted == false {
+            buf.put_slice(int_buf.filled());
             return r;
         }
 
         let mut db = session_stream.session_decryptor.borrow_mut();
         let d = db.as_mut().unwrap();
-        let dec_result = d.append_data(buf.filled());
 
+        let dec_result = d.append_data(int_buf.filled());
         if dec_result.is_err() {
+            println!("error in decryptor: {:?}", dec_result.err().unwrap());
             return Poll::Ready(Err(Error::from(ErrorKind::InvalidData)));
         }
 
         let data = dec_result.ok().unwrap();
+        if data.len() > 0 {
+            println!("got {} bytes after decoding", data.len());
+        }
         session_stream.dec_buffer.extend(data);
 
         if session_stream.dec_buffer.is_empty() {
             return Poll::Pending;
+            //return Poll::Ready(Ok(()));
         }
 
         let r_len = min(buf.capacity(), session_stream.dec_buffer.len());
-        buf.put_slice(session_stream.dec_buffer.as_slice());
+
+        let (out_data, _) = session_stream.dec_buffer.split_at(r_len);
+        buf.put_slice(out_data);
         session_stream.dec_buffer.drain(.. r_len);
 
         Poll::Ready(Ok(()))
@@ -155,6 +175,9 @@ impl SessionDecryptor {
     }
 
     pub fn append_data(&mut self, data: &[u8]) -> Result<Vec<u8>, ()> {
+        if data.len() > 0 {
+            println!("get {} bytes on start decoding", data.len());
+        }
         self.rec_buffer.extend_from_slice(&data);
 
         if self.dec_state == DecState::WaitForHeader {
@@ -169,7 +192,7 @@ impl SessionDecryptor {
             return Ok(vec![]);
         }
 
-        let (pkt, _) = self.rec_buffer.split_at((self.pkt_length + 1).into());
+        let (pkt, _) = self.rec_buffer.split_at((self.pkt_length).into());
 
         let res = self.decode_buffer(pkt);
         if res.is_err() {
@@ -185,7 +208,7 @@ impl SessionDecryptor {
     fn decode_buffer(&self, pkt: &[u8]) -> Result<Vec<u8>, ()> {
         let aad = &pkt[..2];
         let data_len = LittleEndian::read_u16(aad);
-        let data = &pkt[2 .. data_len as usize];
+        let data = &pkt[2 .. (data_len + 2) as usize];
         let auth_tag = &pkt[(data_len + 2) as usize .. ];
 
         let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&self.read_key));
@@ -222,6 +245,7 @@ impl SessionEncryptor {
     }
 
     pub fn encrypt_data(&mut self, data: &[u8]) -> Result<Vec<u8>, ()> {
+        //TODO: need check for max pkt length and split long messages for parts
         let aead = ChaCha20Poly1305::new(GenericArray::from_slice(&self.write_key));
 
         let mut nonce = vec![0; 4];
@@ -230,7 +254,7 @@ impl SessionEncryptor {
         nonce.extend(suffix);
         self.enc_count += 1;
 
-        let mut aad = [0; 2];
+        let mut aad = [0; 2]; //length of packet
         LittleEndian::write_u16(&mut aad, data.len() as u16);
 
         let mut buffer = Vec::new();
@@ -243,19 +267,19 @@ impl SessionEncryptor {
         let auth_tag = res.ok().unwrap();
 
         let mut pkt = Vec::new();
-        pkt.extend(aad);
-        pkt.extend(buffer);
-        pkt.extend(auth_tag);
+        pkt.extend(aad); //encrypted message length
+        pkt.extend(buffer); //encoded data
+        pkt.extend(auth_tag); //auth tag
 
         Ok(pkt)
     }
 }
 
-fn compute_read_key(shared_secret: &[u8; 32]) -> Result<[u8; 32], ()> {
+fn compute_write_key(shared_secret: &[u8; 32]) -> Result<[u8; 32], ()> {
     compute_key(shared_secret, b"Control-Write-Encryption-Key")
 }
 
-fn compute_write_key(shared_secret: &[u8; 32]) -> Result<[u8; 32], ()> {
+fn compute_read_key(shared_secret: &[u8; 32]) -> Result<[u8; 32], ()> {
     compute_key(shared_secret, b"Control-Read-Encryption-Key")
 }
 

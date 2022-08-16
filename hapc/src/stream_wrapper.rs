@@ -64,8 +64,10 @@ impl AsyncWrite for SessionStreamWrapper {
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
-        let stream_wrapper = Pin::into_inner(self);
-        let r = AsyncWrite::poll_shutdown(Pin::new(&mut stream_wrapper.stream.lock().unwrap().as_mut()), cx);
-        r
+        //TODO: change hyper conn to conn w/o shutdown!
+        // let stream_wrapper = Pin::into_inner(self);
+        // let r = AsyncWrite::poll_shutdown(Pin::new(&mut stream_wrapper.stream.lock().unwrap().as_mut()), cx);
+        // r
+        Poll::Ready(Ok(()))
     }
 }
