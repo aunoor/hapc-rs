@@ -4,16 +4,37 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::stream_wrapper::SessionStreamWrapper;
 
-
+use http_parser::{HttpParserType, HttpParser, HttpParserCallback, CallbackResult, ParseAction};
 
 pub struct HAPSession {
 
 }
 
+struct Callback;
+
+ impl HttpParserCallback for Callback {
+     fn on_message_complete(&mut self, parser: &mut HttpParser) -> CallbackResult {
+        println!("Message complete");
+        //parser.
+        Ok(ParseAction::None)
+     }
+
+     fn on_body(&mut self, parser: &mut HttpParser, data: &[u8]) -> CallbackResult {
+
+        let print_func = |v: &Vec<u8>| -> String {
+            let mut s = String::default();
+            for i in v.iter() {
+                s.push(*i as char);
+            };
+            s
+        };
+
+        println!("{:#}", print_func(&data.to_vec()));
+        Ok(ParseAction::None)
+    }
+ }
+
 pub(crate) async fn create_session(mut stream: SessionStreamWrapper) {
-
-    let (mut sender, mut body) = Body::channel();
-
 
     // let url: hyper::Uri = ("/accessories").parse().unwrap();
     // let user_agent = "hapc".to_string();
@@ -34,6 +55,9 @@ pub(crate) async fn create_session(mut stream: SessionStreamWrapper) {
 
     let mut buf = [0u8; 1024];
 
+    let mut parser = HttpParser::new(HttpParserType::Response);
+    let mut cb = Callback;
+
     loop {
 
         let res = stream.read(&mut buf[..]).await;
@@ -42,35 +66,16 @@ pub(crate) async fn create_session(mut stream: SessionStreamWrapper) {
             return;
         }
 
-        let print_func = |v: &Vec<u8>| -> String {
-            let mut s = String::default();
-            for i in v.iter() {
-                s.push(*i as char);
-            };
-            s
-        };
-
         let cnt = res.ok().unwrap();
         if cnt > 0 {
             println!("readed {} bytes from stream", cnt);
+
+            parser.execute(&mut cb, &buf[..cnt]);
+
             let b = Bytes::from(buf[..cnt].to_vec());
             //println!("{:#}", print_func(&b.to_vec()));
 
-            _ = sender.send_data(b).await;
         }
-
-
-            let n = body.data().await;
-            if n.is_some() {
-                println!("has full answer");
-                let u = Body::from(n.unwrap().unwrap());
-                let r = Response::builder().body(u);
-                println!("{:?}", r.unwrap().body());
-            }
-
-
-        //let n = body.next().await;
-
     }
 }
 
@@ -94,4 +99,3 @@ pub(crate) fn req_builder(url: Uri, host: String, user_agent: String, body: Vec<
 
     r.body(b).unwrap()
 }
-

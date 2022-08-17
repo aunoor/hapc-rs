@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 
+http_parser = {git = "https://github.com/aunoor/http-parser-rs" }
+
 byteorder = "1.4.3"
-hyper = { version="^0.14.20", features=["client", "stream", "http1", "runtime"] }
+hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
 tokio = { version = "^1.17.0", features = ["full"] }
 
 rand = "^0.7"
