@@ -140,7 +140,7 @@ impl HAPClient {
 
         let stream_wrapper = SessionStreamWrapper::new(self.stream.clone());
 
-        let hs = create_session(stream_wrapper);
+        let hs = create_session(stream_wrapper, self.user_agent.clone());
 
         Ok(hs)
     }
