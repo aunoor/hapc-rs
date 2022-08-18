@@ -36,6 +36,16 @@ pub(crate) fn session() {
             return;
         }
 
+        let mut hs = r.unwrap();
+
+        //hs.next_event().await;
+        let accessories = hs.accessories().await;
+        if accessories.is_ok() {
+            let accessories = accessories.unwrap();
+            println!("Accessories: {}", accessories);
+        }
+
+
         println!("Session ended");
     });
 }
