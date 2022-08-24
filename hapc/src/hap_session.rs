@@ -37,14 +37,14 @@ impl HttpParserCallback for Callback {
         Ok(ParseAction::None)
     }
 
-    fn on_body(&mut self, parser: &mut HttpParser, data: &[u8]) -> CallbackResult {
+    fn on_body(&mut self, _parser: &mut HttpParser, data: &[u8]) -> CallbackResult {
         println!("on_body");
         let s = String::from_utf8(data.to_vec()).unwrap();
         self.body += &s;
         Ok(ParseAction::None)
     }
 
-    fn on_message_begin(&mut self, parser: &mut HttpParser) -> CallbackResult {
+    fn on_message_begin(&mut self, _parser: &mut HttpParser) -> CallbackResult {
         Ok(ParseAction::None)
     }
 }
@@ -55,7 +55,8 @@ pub struct HAPSession {
     http_channel_receiver: Receiver<HTTPResponse>, //receiver for http responses
     req_channel_sender: Sender<Vec<u8>>, //sender for http requests
     listen_task: JoinHandle<()>,
-    user_agent: String
+    user_agent: String,
+    host: String
 }
 
 impl Drop for HAPSession {
@@ -66,6 +67,7 @@ impl Drop for HAPSession {
 
 impl HAPSession {
     pub(crate) fn new(mut stream: SessionStreamWrapper, user_agent: String) -> Self {
+        let host_str = stream.peer_addr().unwrap().to_string();
         let (event_channel_sender, event_channel_receiver) = tokio::sync::mpsc::channel::<HAPEvent>(100);
         let (http_channel_sender, http_channel_receiver) = tokio::sync::mpsc::channel::<HTTPResponse>(100);
         let (req_channel_sender, mut req_channel_receiver) = tokio::sync::mpsc::channel::<Vec<u8>>(100);
@@ -108,7 +110,8 @@ impl HAPSession {
             http_channel_receiver,
             req_channel_sender,
             listen_task,
-            user_agent
+            user_agent,
+            host: host_str,
         };
         hs
     }
@@ -125,13 +128,13 @@ impl HAPSession {
     }
 
     pub async fn accessories(&mut self) -> Result<String, ()> {
-        let req_str = concat!("GET /accessories HTTP/1.1\r\n",
-                                      "Host: 192.168.0.165:51826\r\n",
-                                      "User-Agent: hapc\r\n",
-                                      "Accept: */*\r\n\r\n").to_string();
+        // let req_str = concat!("GET /accessories HTTP/1.1\r\n",
+        //                               "Host: 192.168.0.165:51826\r\n",
+        //                               "User-Agent: hapc\r\n",
+        //                               "Accept: */*\r\n\r\n").to_string();
 
 
-        let req = session_req_builder(HttpMethod::Get, "/accessories".to_string(), "ssss".to_string(), self.user_agent.clone(), vec![]);
+        let req = session_req_builder(HttpMethod::Get, "/accessories".to_string(), self.host.clone(), self.user_agent.clone(), vec![]);
 
 
         _ = self.req_channel_sender.send(req).await;
