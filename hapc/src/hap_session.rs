@@ -146,10 +146,13 @@ impl HAPSession {
     }
 }
 
-
-pub(crate) fn session_req_builder(method: HttpMethod, url: String, host: String, user_agent: String, body: Vec<u8>) -> Vec<u8> {
+fn session_req_builder(method: HttpMethod, url: String, host: String, user_agent: String, body: Vec<u8>) -> Vec<u8> {
     let mut req_str = format!("{} {} HTTP/1.1\n", method.to_string(), url);
-    req_str += &format!("Host: {}\nUser-Agent: {}\nAccept: */*\n\n", &host, user_agent).to_string();
+    req_str += &format!("Host: {}\nUser-Agent: {}\nAccept: */*\n", &host, user_agent).to_string();
+    if !body.is_empty() {
+        req_str += &format!("Content-Type: application/hap+json\nContent-Length: {}", body.len());
+    }
+    req_str += "\n";
     let mut req = req_str.as_bytes().to_vec();
     req.extend(body);
 
