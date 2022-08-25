@@ -1,0 +1,388 @@
+{
+    "accessories": [
+        {
+            "aid": 1,
+            "services": [
+                {
+                    "iid": 1,
+                    "type": "3E",
+                    "characteristics": [
+                        {
+                            "iid": 2,
+                            "type": "14",
+                            "perms": [
+                                "pw"
+                            ],
+                            "format": "bool"
+                        },
+                        {
+                            "iid": 3,
+                            "type": "20",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 4,
+                            "type": "21",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 5,
+                            "type": "23",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "Bridge"
+                        },
+                        {
+                            "iid": 6,
+                            "type": "30",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "default"
+                        },
+                        {
+                            "iid": 7,
+                            "type": "52",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        }
+                    ]
+                },
+                {
+                    "iid": 8,
+                    "type": "A2",
+                    "characteristics": [
+                        {
+                            "iid": 9,
+                            "type": "37",
+                            "perms": [
+                                "pr",
+                                "ev"
+                            ],
+                            "format": "string",
+                            "value": "01.01.00"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "aid": 2,
+            "services": [
+                {
+                    "iid": 1,
+                    "type": "3E",
+                    "characteristics": [
+                        {
+                            "iid": 2,
+                            "type": "14",
+                            "perms": [
+                                "pw"
+                            ],
+                            "format": "bool"
+                        },
+                        {
+                            "iid": 3,
+                            "type": "20",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 4,
+                            "type": "21",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 5,
+                            "type": "23",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "Lightbulb"
+                        },
+                        {
+                            "iid": 6,
+                            "type": "30",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "default"
+                        },
+                        {
+                            "iid": 7,
+                            "type": "52",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        }
+                    ]
+                },
+                {
+                    "iid": 8,
+                    "type": "43",
+                    "characteristics": [
+                        {
+                            "iid": 9,
+                            "type": "25",
+                            "perms": [
+                                "pr",
+                                "pw",
+                                "ev"
+                            ],
+                            "format": "bool",
+                            "value": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "aid": 3,
+            "services": [
+                {
+                    "iid": 1,
+                    "type": "3E",
+                    "characteristics": [
+                        {
+                            "iid": 2,
+                            "type": "14",
+                            "perms": [
+                                "pw"
+                            ],
+                            "format": "bool"
+                        },
+                        {
+                            "iid": 3,
+                            "type": "20",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 4,
+                            "type": "21",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 5,
+                            "type": "23",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "Big Fan"
+                        },
+                        {
+                            "iid": 6,
+                            "type": "30",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "default"
+                        },
+                        {
+                            "iid": 7,
+                            "type": "52",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        }
+                    ]
+                },
+                {
+                    "iid": 8,
+                    "type": "40",
+                    "characteristics": [
+                        {
+                            "iid": 9,
+                            "type": "25",
+                            "perms": [
+                                "pr",
+                                "pw",
+                                "ev"
+                            ],
+                            "format": "bool",
+                            "value": false
+                        },
+                        {
+                            "iid": 10,
+                            "type": "29",
+                            "perms": [
+                                "pr",
+                                "pw",
+                                "ev"
+                            ],
+                            "format": "float",
+                            "minValue": 0,
+                            "unit": "percentage",
+                            "maxValue": 100,
+                            "minStep": 1,
+                            "value": 0
+                        },
+                        {
+                            "iid": 11,
+                            "type": "28",
+                            "perms": [
+                                "pr",
+                                "pw",
+                                "ev"
+                            ],
+                            "format": "int",
+                            "valid-values": [
+                                0,
+                                1
+                            ],
+                            "value": 0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "aid": 4,
+            "services": [
+                {
+                    "iid": 1,
+                    "type": "3E",
+                    "characteristics": [
+                        {
+                            "iid": 2,
+                            "type": "14",
+                            "perms": [
+                                "pw"
+                            ],
+                            "format": "bool"
+                        },
+                        {
+                            "iid": 3,
+                            "type": "20",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 4,
+                            "type": "21",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        },
+                        {
+                            "iid": 5,
+                            "type": "23",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "Garage"
+                        },
+                        {
+                            "iid": 6,
+                            "type": "30",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": "default"
+                        },
+                        {
+                            "iid": 7,
+                            "type": "52",
+                            "perms": [
+                                "pr"
+                            ],
+                            "format": "string",
+                            "value": ""
+                        }
+                    ]
+                },
+                {
+                    "iid": 8,
+                    "type": "41",
+                    "characteristics": [
+                        {
+                            "iid": 9,
+                            "type": "E",
+                            "perms": [
+                                "pr",
+                                "ev"
+                            ],
+                            "format": "uint8",
+                            "valid-values": [
+                                0,
+                                1,
+                                2,
+                                3,
+                                4
+                            ],
+                            "value": 0
+                        },
+                        {
+                            "iid": 10,
+                            "type": "32",
+                            "perms": [
+                                "pr",
+                                "pw",
+                                "ev"
+                            ],
+                            "format": "uint8",
+                            "valid-values": [
+                                0,
+                                1
+                            ],
+                            "value": 0
+                        },
+                        {
+                            "iid": 11,
+                            "type": "24",
+                            "perms": [
+                                "pr",
+                                "ev"
+                            ],
+                            "format": "bool",
+                            "value": false
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
