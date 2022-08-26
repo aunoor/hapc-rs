@@ -2,7 +2,7 @@ use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc::{Receiver, Sender}, t
 
 use crate::stream_wrapper::SessionStreamWrapper;
 
-use http_parser::{HttpParserType, HttpParser, HttpParserCallback, CallbackResult, ParseAction, HttpMethod};
+use hap_http_parser::{HttpParserType, HttpParser, HttpParserCallback, CallbackResult, ParseAction, HttpMethod};
 
 pub struct HAPEvent {
     body: String,
@@ -22,12 +22,12 @@ impl HttpParserCallback for Callback {
     fn on_message_complete(&mut self, parser: &mut HttpParser) -> CallbackResult {
         println!("on_message_complete: {:?}", parser.response_type.unwrap());
         match parser.response_type.unwrap() {
-            http_parser::ResponseType::Http => {
+            hap_http_parser::ResponseType::Http => {
                 _ = self.http_channel_sender.try_send(HTTPResponse {
                     body: self.body.clone(),
                 });
             }
-            http_parser::ResponseType::Event => {
+            hap_http_parser::ResponseType::Event => {
                 _ = self.event_channel_sender.try_send(HAPEvent {
                     body: self.body.clone(),
                 });

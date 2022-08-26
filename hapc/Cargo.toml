@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 
-http_parser = {git = "https://github.com/aunoor/http-parser-rs" }
+hap_http_parser = {git = "https://github.com/aunoor/hap-http-parser-rs" }
 
 byteorder = "1.4.3"
 hyper = { version="^0.14.20", features=["client", "http1", "runtime"] }
@@ -27,6 +27,9 @@ num-bigint = "^0.4"
 hkdf = "^0.9"
 subtle = "2.4"
 futures = "0.3.21"
+
+serde_json = "1.0"
+serde = { version = "1.0.144", features = ["derive"] }
 
 
 [build-dependencies]
