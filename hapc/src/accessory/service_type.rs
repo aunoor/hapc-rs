@@ -1,4 +1,4 @@
-pub enum ServiceType{
+pub enum ServiceType {
     AccessoryInformation,
     AirPurifier,
     AirQualitySensor,
@@ -24,8 +24,26 @@ pub enum ServiceType{
     LightBulb,
     LightSensor,
     LockManagement,
-
-
+    LockMechanism,
+    Microphone,
+    MotionSensor,
+    OccupancySensor,
+    Outlet,
+    SecuritySystem,
+    ServiceLabel,
+    Siri,
+    Slat,
+    SmokeSensor,
+    Speaker,
+    StatelessProgrammableSwitch,
+    Switch,
+    TargetControl,
+    TargetControlManagement,
+    TemperatureSensor,
+    Thermostat,
+    Valve,
+    Window,
+    WindowCovering,
     Unknown
 }
 
@@ -57,7 +75,26 @@ pub(crate) fn string_to_service_type(value: String) -> ServiceType {
         "43" => ServiceType::LightBulb,
         "84" => ServiceType::LightSensor,
         "44" => ServiceType::LockManagement,
-
+        "45" => ServiceType::LockMechanism,
+        "112" => ServiceType::Microphone,
+        "85" => ServiceType::MotionSensor,
+        "86" => ServiceType::OccupancySensor,
+        "47" => ServiceType::Outlet,
+        "7E" => ServiceType::SecuritySystem,
+        "CC" => ServiceType::ServiceLabel,
+        "133" => ServiceType::Siri,
+        "B9" => ServiceType::Slat,
+        "87" => ServiceType::SmokeSensor,
+        "113" => ServiceType::Speaker,
+        "89" => ServiceType::StatelessProgrammableSwitch,
+        "49" => ServiceType::Switch,
+        "125" => ServiceType::TargetControl,
+        "122" => ServiceType::TargetControlManagement,
+        "8A" => ServiceType::TemperatureSensor,
+        "4A" => ServiceType::Thermostat,
+        "D0" => ServiceType::Valve,
+        "8B" => ServiceType::Window,
+        "8C" => ServiceType::WindowCovering,
 
         _ => ServiceType::Unknown
     }
