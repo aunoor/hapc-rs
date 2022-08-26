@@ -1,5 +1,5 @@
 use serde_json::{Value};
-use super::{service_type::{string_to_service_type}, permissions::perms_to_set, value::{format_to_value_type, value_to_value}};
+use super::{service_type::{string_to_service_type}, permissions::perms_to_set, value::{format_to_value_type, value_to_value, self}};
 
 #[derive(Clone)]
 struct Accessory {
@@ -206,16 +206,17 @@ fn parse_characteristic_object(characteristic: &Value) -> Result<(),()> {
     }
     let value_type = value_type.unwrap();
 
-    if !characteristic.contains_key(VALUE_KEY) {
-        //characteristic don't contain value
-        return Err(());
-    }
-
-    let value = value_to_value(&characteristic[VALUE_KEY], value_type);
-    if value.is_err() {
-        return Err(())
-    }
-    let value = value.unwrap();
+    let value = {
+        if characteristic.contains_key(VALUE_KEY) {
+            let value = value_to_value(&characteristic[VALUE_KEY], value_type);
+            if value.is_err() {
+                return Err(())
+            }
+            value.unwrap()
+        } else {
+            value::Value::NotDefined
+        }
+    };
 
     //Characteristic
 

@@ -10,6 +10,7 @@ pub enum ValueType {
     String,
     Tlv8,
     Data,
+    NotDefined
 }
 
 #[derive(Clone, Debug)]
@@ -24,6 +25,7 @@ pub enum Value {
     String(String),
     Tlv8(Vec<u8>),
     Data(Vec<u8>),
+    NotDefined
 }
 
 pub(crate) fn format_to_value_type(format: &str) -> Result<ValueType, ()> {
@@ -88,7 +90,7 @@ pub(crate) fn value_to_value(value: &serde_json::Value, value_type: ValueType) -
                 Value::Float(value.as_f64().unwrap())
             },
             ValueType::String => {
-                if !value.is_u64() {
+                if !value.is_string() {
                     return Err(())
                 }
                 Value::String(value.as_str().unwrap().to_string())
@@ -107,6 +109,7 @@ pub(crate) fn value_to_value(value: &serde_json::Value, value_type: ValueType) -
                 //todo: decode Base64
                 Value::Data(value.as_str().unwrap().as_bytes().to_vec())
             },
+            _ => Value::NotDefined,
         };
 
     Ok(v)
