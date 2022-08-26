@@ -212,6 +212,10 @@ fn parse_characteristic_object(characteristic: &Value) -> Result<(),()> {
     }
 
     let value = value_to_value(&characteristic[VALUE_KEY], value_type);
+    if value.is_err() {
+        return Err(())
+    }
+    let value = value.unwrap();
 
     //Characteristic
 
